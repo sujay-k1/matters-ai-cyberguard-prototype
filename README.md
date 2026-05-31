@@ -24,7 +24,7 @@ npm run build
 
 - Carbon-style global header with Overview, Work Queue, and Activity Log tabs
 - Desktop Work Queue with direct filter families, nested filter flyouts, queue search, sorting, pagination, and sticky pinned columns
-- Right-side preview drawer for alerts and cases
+- Right-side triage-first preview drawer for alerts and cases with sticky decision header, inline assignee/status actions, recommended next step, quick facts, and progressive disclosure accordions
 - Bulk selection, assignment, status change, tagging, and case consolidation review flow
 - Column customization with visibility toggles and drag-reordering
 - Keyboard shortcuts and query-string review presets
@@ -43,6 +43,7 @@ npm run build
 
 - `/?state=default`
 - `/?state=preview`
+- `/?state=alert-preview`
 - `/?state=filter-open`
 - `/?state=bulk-selected`
 - `/?state=merge-review`
@@ -51,7 +52,7 @@ npm run build
 
 ## GitHub repository URL
 
-Pending remote creation.
+https://github.com/sujay-k1/matters-ai-cyberguard-prototype
 
 ## Prototype limitations
 

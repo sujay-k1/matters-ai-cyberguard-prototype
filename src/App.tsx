@@ -5,6 +5,7 @@ import {
   Dropdown,
   Modal,
   Tag,
+  TextArea,
   ToastNotification,
 } from '@carbon/react';
 import specData from './data/cyberguard_work_queue_content_spec_v1.json';
@@ -64,18 +65,18 @@ const SORT_LABELS: Record<SortOptionId, string> = {
   title: 'Title: A–Z',
 };
 
-const assignOptions = ['Assign to me', 'Unassigned', 'Priya Sharma', 'Arjun Rao', 'Sameer Khan', 'Kavya Nair'];
-const statusOptions = [
+const bulkAssignOptions = ['Assign to me', 'Unassigned', 'Priya Sharma', 'Arjun Rao', 'Sameer Khan', 'Kavya Nair'];
+const reassignOptions = ['Unassigned', 'Priya Sharma', 'Arjun Rao', 'Sameer Khan', 'Kavya Nair'];
+const workflowStatusOptions = [
   'New',
   'Triaged',
-  'Assigned',
   'Investigating',
   'Awaiting approval',
   'Remediating',
-  'Contained',
   'Monitoring',
   'Resolved',
-];
+ ] as const;
+const severityOptions = ['Critical', 'High', 'Medium', 'Low', 'Informational'] as const;
 
 function App() {
   const spec = specData as unknown as {
@@ -117,9 +118,18 @@ function App() {
   const [statusModalOpen, setStatusModalOpen] = useState(false);
   const [addTagModalOpen, setAddTagModalOpen] = useState(false);
   const [investigationInfoOpen, setInvestigationInfoOpen] = useState(false);
-  const [pendingAssignee, setPendingAssignee] = useState(assignOptions[0]);
-  const [pendingStatus, setPendingStatus] = useState(statusOptions[0]);
+  const [drawerAssignOpen, setDrawerAssignOpen] = useState(false);
+  const [drawerStatusOpen, setDrawerStatusOpen] = useState(false);
+  const [severityModalOpen, setSeverityModalOpen] = useState(false);
+  const [reopenModalOpen, setReopenModalOpen] = useState(false);
+  const [pendingAssignee, setPendingAssignee] = useState(bulkAssignOptions[0]);
+  const [pendingStatus, setPendingStatus] = useState<(typeof workflowStatusOptions)[number]>('Triaged');
   const [pendingTag, setPendingTag] = useState('Needs review');
+  const [pendingSeverity, setPendingSeverity] = useState<(typeof severityOptions)[number]>('High');
+  const [severityComment, setSeverityComment] = useState('');
+  const [reopenComment, setReopenComment] = useState('');
+  const [reopenStatus, setReopenStatus] = useState<(typeof workflowStatusOptions)[number]>('Investigating');
+  const [mergeReopenComment, setMergeReopenComment] = useState('');
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const [destinationCaseId, setDestinationCaseId] = useState<string | null>(null);
   const [showShortcutOverlays, setShowShortcutOverlays] = useState(false);
@@ -199,6 +209,9 @@ function App() {
     if (state === 'preview') {
       const firstCase = items.find((item) => item.item_type === 'case') ?? items[0];
       setPreviewItemId(firstCase?.id ?? null);
+    } else if (state === 'alert-preview') {
+      const firstAlert = items.find((item) => item.item_type === 'alert') ?? items[0];
+      setPreviewItemId(firstAlert?.id ?? null);
     } else if (state === 'filter-open') {
       setActiveFilterId('data_sensitivity');
       setFilterModeActive(true);
@@ -206,6 +219,7 @@ function App() {
       setSelectedIds(items.slice(0, 3).map((item) => item.id));
     } else if (state === 'merge-review') {
       setSelectedIds(items.filter((item) => item.item_type === 'alert').slice(0, 3).map((item) => item.id));
+      setMergeReopenComment('');
       setMergeOpen(true);
     } else if (state === 'columns-open') {
       setColumnsOpen(true);
@@ -237,6 +251,136 @@ function App() {
     setToasts((current) => [...current, { id, kind, title, subtitle }]);
   };
 
+  const updateItem = (itemId: string, updater: (item: WorkItem) => WorkItem) => {
+    setItems((current) => current.map((item) => (item.id === itemId ? updater(item) : item)));
+  };
+
+  const openDrawerAssign = () => {
+    if (!previewItem) return;
+    setPendingAssignee(previewItem.assignee === CURRENT_ANALYST ? CURRENT_ANALYST : previewItem.assignee);
+    setDrawerAssignOpen(true);
+  };
+
+  const openDrawerStatus = () => {
+    if (!previewItem) return;
+    setPendingStatus(normalizeWorkflowStatus(previewItem.status));
+    setDrawerStatusOpen(true);
+  };
+
+  const openSeverityOverride = () => {
+    if (!previewItem) return;
+    setPendingSeverity((previewItem.analystSeverityOverride?.severity ?? previewItem.severity) as (typeof severityOptions)[number]);
+    setSeverityComment('');
+    setSeverityModalOpen(true);
+  };
+
+  const openReopenModal = (nextStatus: (typeof workflowStatusOptions)[number] = 'Investigating') => {
+    setReopenStatus(nextStatus);
+    setReopenComment('');
+    setReopenModalOpen(true);
+  };
+
+  const handleAssignToMe = () => {
+    if (!previewItem) return;
+    updateItem(previewItem.id, (item) => ({
+      ...item,
+      assignee: CURRENT_ANALYST,
+      preview: {
+        ...item.preview,
+        identity_and_urgency: {
+          ...item.preview.identity_and_urgency,
+          assignee: CURRENT_ANALYST,
+        },
+      },
+      localHistory: [...(item.localHistory ?? []), `Assigned to ${CURRENT_ANALYST}`],
+    }));
+    addToast('success', 'Assigned to you', `${previewItem.id} is now assigned to ${CURRENT_ANALYST}.`);
+  };
+
+  const handleApplyDrawerAssignment = () => {
+    if (!previewItem) return;
+    updateItem(previewItem.id, (item) => ({
+      ...item,
+      assignee: pendingAssignee,
+      preview: {
+        ...item.preview,
+        identity_and_urgency: {
+          ...item.preview.identity_and_urgency,
+          assignee: pendingAssignee,
+        },
+      },
+      localHistory: [...(item.localHistory ?? []), `Reassigned to ${pendingAssignee}`],
+    }));
+    setDrawerAssignOpen(false);
+    addToast('success', 'Assignment updated', `${previewItem.id} is now assigned to ${pendingAssignee}.`);
+  };
+
+  const applyStatusChange = (itemId: string, nextStatus: (typeof workflowStatusOptions)[number], comment?: string) => {
+    updateItem(itemId, (item) => ({
+      ...item,
+      status: nextStatus,
+      reopenComment: comment ?? item.reopenComment,
+      preview: {
+        ...item.preview,
+        identity_and_urgency: {
+          ...item.preview.identity_and_urgency,
+          status: nextStatus,
+        },
+      },
+      localHistory: [
+        ...(item.localHistory ?? []),
+        comment ? `${item.id} reopened as ${nextStatus}: ${comment}` : `Status changed to ${nextStatus}`,
+      ],
+    }));
+  };
+
+  const handleApplyDrawerStatus = () => {
+    if (!previewItem) return;
+    if (previewItem.status === 'Resolved' && pendingStatus !== 'Resolved') {
+      setDrawerStatusOpen(false);
+      openReopenModal(pendingStatus);
+      return;
+    }
+    applyStatusChange(previewItem.id, pendingStatus);
+    setDrawerStatusOpen(false);
+    addToast('success', 'Status updated', `${previewItem.id} moved to ${pendingStatus}.`);
+  };
+
+  const handleConfirmReopen = () => {
+    if (!previewItem || !reopenComment.trim()) return;
+    applyStatusChange(previewItem.id, reopenStatus, reopenComment.trim());
+    setReopenModalOpen(false);
+    addToast('success', `${previewItem.id} reopened`, `${previewItem.id} reopened as ${reopenStatus}.`);
+  };
+
+  const handleApplySeverityOverride = () => {
+    if (!previewItem || !severityComment.trim()) return;
+    const previousSeverity = previewItem.analystSeverityOverride?.previousSeverity ?? previewItem.severity;
+    updateItem(previewItem.id, (item) => ({
+      ...item,
+      severity: pendingSeverity,
+      analystSeverityOverride: {
+        severity: pendingSeverity,
+        comment: severityComment.trim(),
+        previousSeverity,
+      },
+      preview: {
+        ...item.preview,
+        identity_and_urgency: {
+          ...item.preview.identity_and_urgency,
+          severity: pendingSeverity,
+        },
+      },
+      localHistory: [...(item.localHistory ?? []), `Severity overridden to ${pendingSeverity}: ${severityComment.trim()}`],
+    }));
+    setSeverityModalOpen(false);
+    addToast('success', 'Severity override applied', `${previewItem.id} severity changed to ${pendingSeverity}.`);
+  };
+
+  const notifyPlaceholderAction = (title: string, subtitle: string) => {
+    addToast('info', title, subtitle);
+  };
+
   const handleToggleFilterValue = (filterId: string, value: string) => {
     setSelectedFilters((current) => {
       const next = new Set(current[filterId] ?? []);
@@ -264,7 +408,21 @@ function App() {
   const handleApplyAssignment = () => {
     const targetAssignee = pendingAssignee === 'Assign to me' ? CURRENT_ANALYST : pendingAssignee;
     setItems((current) =>
-      current.map((item) => (selectedIds.includes(item.id) ? { ...item, assignee: targetAssignee } : item)),
+      current.map((item) =>
+        selectedIds.includes(item.id)
+          ? {
+              ...item,
+              assignee: targetAssignee,
+              preview: {
+                ...item.preview,
+                identity_and_urgency: {
+                  ...item.preview.identity_and_urgency,
+                  assignee: targetAssignee,
+                },
+              },
+            }
+          : item,
+      ),
     );
     setAssignModalOpen(false);
     addToast('success', 'Assignment updated', `Assigned ${selectedIds.length} items to ${targetAssignee}.`);
@@ -272,7 +430,21 @@ function App() {
 
   const handleApplyStatus = () => {
     setItems((current) =>
-      current.map((item) => (selectedIds.includes(item.id) ? { ...item, status: pendingStatus } : item)),
+      current.map((item) =>
+        selectedIds.includes(item.id)
+          ? {
+              ...item,
+              status: pendingStatus,
+              preview: {
+                ...item.preview,
+                identity_and_urgency: {
+                  ...item.preview.identity_and_urgency,
+                  status: pendingStatus,
+                },
+              },
+            }
+          : item,
+      ),
     );
     setStatusModalOpen(false);
     addToast('success', 'Status updated', `Updated ${selectedIds.length} items to ${pendingStatus}.`);
@@ -294,6 +466,10 @@ function App() {
     if (!mergeSummary) {
       return;
     }
+    if (mergeSummary.requiresReopenComment && !mergeReopenComment.trim()) {
+      addToast('warning', 'Reopen comment required', 'Explain why the resolved destination case is being reopened.');
+      return;
+    }
     const targetId = mergeSummary.destinationCase?.id ?? `CASE-${3000 + items.length + 1}`;
     const mergedCase: WorkItem = {
       id: targetId,
@@ -308,7 +484,7 @@ function App() {
       priority_score: mergeSummary.recalculatedPriority,
       severity: mergeSummary.proposedSeverity,
       data_sensitivity: mergeSummary.highestDataSensitivity,
-      status: mergeSummary.destinationCase?.status ?? 'Assigned',
+      status: mergeSummary.proposedStatus,
       assignee: mergeSummary.destinationCase?.assignee ?? CURRENT_ANALYST,
       sla: mergeSummary.destinationCase?.sla ?? '45m left',
       detection_time: mergeSummary.destinationCase?.detection_time ?? selectedItems[0]?.detection_time ?? 'Today, 10:00',
@@ -328,7 +504,7 @@ function App() {
           title: mergeSummary.proposedTitle,
           severity: mergeSummary.proposedSeverity,
           priority: `P${priorityBand(mergeSummary.recalculatedPriority)} · ${mergeSummary.recalculatedPriority}`,
-          status: mergeSummary.destinationCase?.status ?? 'Assigned',
+          status: mergeSummary.proposedStatus,
           assignee: mergeSummary.destinationCase?.assignee ?? CURRENT_ANALYST,
           sla: mergeSummary.destinationCase?.sla ?? '45m left',
         },
@@ -357,6 +533,8 @@ function App() {
           : mergeSummary.resultingAlertCount > 5
             ? 'Large case: 6+ alerts'
             : 'Multi-alert case: 2–5 alerts',
+      reopenComment: mergeSummary.requiresReopenComment ? mergeReopenComment.trim() : undefined,
+      localHistory: mergeSummary.requiresReopenComment ? [`Reopened during merge: ${mergeReopenComment.trim()}`] : [],
     };
 
     setItems((current) => {
@@ -367,6 +545,7 @@ function App() {
     });
     setSelectedIds([]);
     setMergeOpen(false);
+    setMergeReopenComment('');
     setPreviewItemId(targetId);
     addToast('success', 'Case consolidation complete', `${mergeSummary.resultingAlertCount} alerts rolled into ${targetId}.`);
   };
@@ -402,6 +581,10 @@ function App() {
       else if (assignModalOpen) setAssignModalOpen(false);
       else if (statusModalOpen) setStatusModalOpen(false);
       else if (addTagModalOpen) setAddTagModalOpen(false);
+      else if (drawerAssignOpen) setDrawerAssignOpen(false);
+      else if (drawerStatusOpen) setDrawerStatusOpen(false);
+      else if (severityModalOpen) setSeverityModalOpen(false);
+      else if (reopenModalOpen) setReopenModalOpen(false);
       else if (investigationInfoOpen) setInvestigationInfoOpen(false);
       else if (shortcutGuideOpen) setShortcutGuideOpen(false);
       else if (isQueueSearchActive) {
@@ -582,7 +765,10 @@ function App() {
                       canConsolidate={canConsolidateSelection}
                       onAssign={() => setAssignModalOpen(true)}
                       onStatus={() => setStatusModalOpen(true)}
-                      onConsolidate={() => setMergeOpen(true)}
+                      onConsolidate={() => {
+                        setMergeReopenComment('');
+                        setMergeOpen(true);
+                      }}
                       onAddTag={() => setAddTagModalOpen(true)}
                       onClear={() => setSelectedIds([])}
                     />
@@ -606,19 +792,33 @@ function App() {
                   item={previewItem}
                   currentAnalyst={CURRENT_ANALYST}
                   onClose={() => setPreviewItemId(null)}
-                  onAssignToMe={() => {
-                    setItems((current) =>
-                      current.map((item) =>
-                        item.id === previewItem.id ? { ...item, assignee: CURRENT_ANALYST } : item,
-                      ),
-                    );
-                    addToast('success', 'Assigned to you', `${previewItem.id} is now assigned to ${CURRENT_ANALYST}.`);
-                  }}
+                  onAssignToMe={handleAssignToMe}
+                  onReassign={openDrawerAssign}
+                  onChangeStatus={openDrawerStatus}
                   onOpenInvestigation={() => setInvestigationInfoOpen(true)}
-                  onMoreActions={() => {
-                    setSelectedIds([previewItem.id]);
-                    setStatusModalOpen(true);
-                  }}
+                  onChangeSeverity={openSeverityOverride}
+                  onAddComment={() =>
+                    notifyPlaceholderAction('Comment capture', 'Comment workflows will be added in the next phase.')
+                  }
+                  onEditTags={() =>
+                    notifyPlaceholderAction('Tag editing', 'Use the bulk Add tag flow to update tags in this prototype.')
+                  }
+                  onRenameCase={() =>
+                    notifyPlaceholderAction('Rename case', 'Case renaming will be added in the next phase.')
+                  }
+                  onReopenItem={() => openReopenModal('Investigating')}
+                  onViewActivityLog={() =>
+                    notifyPlaceholderAction('Activity log', 'Open the Activity Log tab for the lightweight audit placeholder.')
+                  }
+                  onClassifyItem={() =>
+                    notifyPlaceholderAction('Classification', 'Classification controls are intentionally deferred in this prototype.')
+                  }
+                  onReviewRelatedAlerts={() =>
+                    notifyPlaceholderAction('Related alerts', 'Review related alerts in the queue before consolidating them into a case.')
+                  }
+                  onConsolidateHint={() =>
+                    notifyPlaceholderAction('Consolidate into case', 'Select related queue items to consolidate them into a case.')
+                  }
                 />
               </div>
             ) : null}
@@ -649,9 +849,16 @@ function App() {
         affectedSystems={mergeSummary?.affectedSystems ?? []}
         assignees={mergeSummary?.assignees ?? []}
         statuses={mergeSummary?.statuses ?? []}
+        proposedStatus={mergeSummary?.proposedStatus ?? 'Triaged'}
         warnings={mergeSummary?.warnings ?? []}
+        requiresReopenComment={mergeSummary?.requiresReopenComment ?? false}
+        reopenComment={mergeReopenComment}
+        onReopenCommentChange={setMergeReopenComment}
         onDestinationChange={setDestinationCaseId}
-        onClose={() => setMergeOpen(false)}
+        onClose={() => {
+          setMergeOpen(false);
+          setMergeReopenComment('');
+        }}
         onSubmit={handleConsolidate}
       />
 
@@ -659,7 +866,7 @@ function App() {
         open={assignModalOpen}
         title="Assign items"
         variant="combobox"
-        items={assignOptions}
+        items={bulkAssignOptions}
         selectedItem={pendingAssignee}
         onSelect={setPendingAssignee}
         onClose={() => setAssignModalOpen(false)}
@@ -670,9 +877,9 @@ function App() {
         open={statusModalOpen}
         title="Change status"
         variant="dropdown"
-        items={statusOptions}
+        items={[...workflowStatusOptions]}
         selectedItem={pendingStatus}
-        onSelect={setPendingStatus}
+        onSelect={(value) => setPendingStatus(value as (typeof workflowStatusOptions)[number])}
         onClose={() => setStatusModalOpen(false)}
         onSubmit={handleApplyStatus}
       />
@@ -687,6 +894,84 @@ function App() {
         onClose={() => setAddTagModalOpen(false)}
         onSubmit={handleAddTag}
       />
+
+      <SelectionModal
+        open={drawerAssignOpen}
+        title="Reassign item"
+        variant="combobox"
+        items={reassignOptions}
+        selectedItem={pendingAssignee}
+        onSelect={setPendingAssignee}
+        onClose={() => setDrawerAssignOpen(false)}
+        onSubmit={handleApplyDrawerAssignment}
+      />
+
+      <SelectionModal
+        open={drawerStatusOpen}
+        title="Change workflow status"
+        variant="dropdown"
+        items={[...workflowStatusOptions]}
+        selectedItem={pendingStatus}
+        onSelect={(value) => setPendingStatus(value as (typeof workflowStatusOptions)[number])}
+        onClose={() => setDrawerStatusOpen(false)}
+        onSubmit={handleApplyDrawerStatus}
+      />
+
+      <Modal
+        open={severityModalOpen}
+        modalHeading="Change severity"
+        primaryButtonText="Apply override"
+        secondaryButtonText="Cancel"
+        primaryButtonDisabled={!severityComment.trim()}
+        onRequestClose={() => setSeverityModalOpen(false)}
+        onRequestSubmit={handleApplySeverityOverride}
+      >
+        <div className="cg-dialog-stack">
+          <Dropdown
+            id="severity-override"
+            titleText="Severity"
+            label="Choose a severity"
+            items={severityOptions.map((entry) => ({ id: entry, label: entry }))}
+            selectedItem={{ id: pendingSeverity, label: pendingSeverity }}
+            itemToString={(item) => item?.label ?? ''}
+            onChange={({ selectedItem: next }) => {
+              if (next) {
+                setPendingSeverity(next.label as (typeof severityOptions)[number]);
+              }
+            }}
+          />
+          <TextArea
+            id="severity-comment"
+            labelText="Why are you changing the severity?"
+            placeholder="Explain the analyst override"
+            rows={4}
+            value={severityComment}
+            onChange={(event) => setSeverityComment(event.currentTarget.value)}
+          />
+        </div>
+      </Modal>
+
+      <Modal
+        open={reopenModalOpen}
+        modalHeading="Reopen work item"
+        primaryButtonText="Reopen"
+        secondaryButtonText="Cancel"
+        primaryButtonDisabled={!reopenComment.trim()}
+        onRequestClose={() => setReopenModalOpen(false)}
+        onRequestSubmit={handleConfirmReopen}
+      >
+        <div className="cg-dialog-stack">
+          <p>This item will reopen as {reopenStatus}.</p>
+          <TextArea
+            id="reopen-comment"
+            labelText="Why are you reopening this item?"
+            placeholder="Add the required reopening comment"
+            rows={4}
+            value={reopenComment}
+            onChange={(event) => setReopenComment(event.currentTarget.value)}
+          />
+        </div>
+      </Modal>
 
       <Modal
         open={investigationInfoOpen}
@@ -1012,6 +1297,13 @@ function buildMergeSummary(selectedItems: WorkItem[], items: WorkItem[], destina
   const warnings = [];
   if (assignees.length > 1) warnings.push('Selected items have different assignees.');
   if (statuses.length > 1) warnings.push('Selected items have different workflow statuses.');
+  const proposedStatus = rollupMergedStatus(selectedItems, destinationCase);
+  const requiresReopenComment =
+    normalizeWorkflowStatus(destinationCase?.status) === 'Resolved' &&
+    selectedItems.some((item) => normalizeWorkflowStatus(item.status) !== 'Resolved');
+  if (requiresReopenComment) {
+    warnings.push('Open work is being merged into a resolved case. This action reopens the destination case.');
+  }
 
   const highestSeverity = pickHighestSeverity(selectedItems.map((item) => item.severity));
   const destinationTargets = [...new Set(selectedItems.map((item) => item.destination_exposure_target).filter(Boolean))];
@@ -1038,7 +1330,9 @@ function buildMergeSummary(selectedItems: WorkItem[], items: WorkItem[], destina
     affectedSystems,
     assignees,
     statuses,
+    proposedStatus,
     warnings,
+    requiresReopenComment,
     destinationTargets,
     containsNotContained,
     highestDataSensitivity,
@@ -1090,6 +1384,53 @@ function priorityBand(score: number) {
   if (score >= 51) return 2;
   if (score >= 16) return 3;
   return 4;
+}
+
+function normalizeWorkflowStatus(status?: string | null): (typeof workflowStatusOptions)[number] {
+  if (status === 'Assigned') return 'Investigating';
+  if (status === 'Contained') return 'Monitoring';
+  if (status && workflowStatusOptions.includes(status as (typeof workflowStatusOptions)[number])) {
+    return status as (typeof workflowStatusOptions)[number];
+  }
+  return 'Triaged';
+}
+
+function rollupMergedStatus(
+  selectedItems: WorkItem[],
+  destinationCase: WorkItem | null,
+): (typeof workflowStatusOptions)[number] {
+  const openStatuses = selectedItems
+    .map((item) => normalizeWorkflowStatus(item.status))
+    .filter((status) => status !== 'Resolved');
+
+  if (!openStatuses.length) {
+    return 'Resolved';
+  }
+
+  if (selectedItems.some((item) => normalizeWorkflowStatus(item.status) === 'New')) {
+    return 'Triaged';
+  }
+
+  if (normalizeWorkflowStatus(destinationCase?.status) === 'Resolved') {
+    return 'Investigating';
+  }
+
+  const workflowOrder: Array<(typeof workflowStatusOptions)[number]> = [
+    'New',
+    'Triaged',
+    'Investigating',
+    'Awaiting approval',
+    'Remediating',
+    'Monitoring',
+    'Resolved',
+  ];
+  const ranks = new Map(workflowOrder.map((status, index) => [status, index]));
+
+  return openStatuses.reduce<(typeof workflowStatusOptions)[number]>((leastProgressed, status) => {
+    const currentRank = ranks.get(status) ?? 99;
+    const leastRank = ranks.get(leastProgressed) ?? 99;
+    return currentRank < leastRank ? status : leastProgressed;
+  }, openStatuses[0]);
 }
 
 export default App;

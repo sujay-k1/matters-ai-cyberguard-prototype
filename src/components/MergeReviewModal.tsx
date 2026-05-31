@@ -1,4 +1,4 @@
-import { Dropdown, Modal, Tag } from '@carbon/react';
+import { Dropdown, Modal, Tag, TextArea } from '@carbon/react';
 import type { WorkItem } from '../types/queue';
 
 interface MergeReviewModalProps {
@@ -12,7 +12,11 @@ interface MergeReviewModalProps {
   affectedSystems: string[];
   assignees: string[];
   statuses: string[];
+  proposedStatus: string;
   warnings: string[];
+  requiresReopenComment: boolean;
+  reopenComment: string;
+  onReopenCommentChange: (value: string) => void;
   onDestinationChange: (caseId: string | null) => void;
   onClose: () => void;
   onSubmit: () => void;
@@ -29,7 +33,11 @@ export function MergeReviewModal({
   affectedSystems,
   assignees,
   statuses,
+  proposedStatus,
   warnings,
+  requiresReopenComment,
+  reopenComment,
+  onReopenCommentChange,
   onDestinationChange,
   onClose,
   onSubmit,
@@ -40,6 +48,7 @@ export function MergeReviewModal({
       modalHeading="Review consolidation"
       primaryButtonText="Consolidate"
       secondaryButtonText="Cancel"
+      primaryButtonDisabled={requiresReopenComment && !reopenComment.trim()}
       onRequestClose={onClose}
       onRequestSubmit={onSubmit}
     >
@@ -100,7 +109,24 @@ export function MergeReviewModal({
             <h4>Existing statuses</h4>
             <p>{statuses.join(', ')}</p>
           </div>
+          <div>
+            <h4>Proposed merged status</h4>
+            <p>{proposedStatus}</p>
+          </div>
         </section>
+        {requiresReopenComment ? (
+          <section>
+            <h4>Reopen comment</h4>
+            <TextArea
+              id="merge-reopen-comment"
+              labelText="Why are you reopening this item?"
+              placeholder="Add the required reopening comment"
+              rows={4}
+              value={reopenComment}
+              onChange={(event) => onReopenCommentChange(event.currentTarget.value)}
+            />
+          </section>
+        ) : null}
         {warnings.length ? (
           <section>
             <h4>Conflict warnings</h4>

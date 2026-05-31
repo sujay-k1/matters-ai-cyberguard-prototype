@@ -84,6 +84,13 @@ export interface WorkItem {
   affected_data_volume?: string;
   preview: PreviewPayload;
   derivedComposition: string;
+  analystSeverityOverride?: {
+    severity: string;
+    comment: string;
+    previousSeverity: string;
+  };
+  reopenComment?: string;
+  localHistory?: string[];
 }
 
 export interface ColumnDefinition {
