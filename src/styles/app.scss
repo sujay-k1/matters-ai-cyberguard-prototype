@@ -455,7 +455,7 @@ body {
   border-top: 1px solid #e0e0e0;
   border-bottom: 0;
   display: grid;
-  grid-template-columns: 1fr 1fr auto;
+  grid-template-columns: 1fr auto;
   gap: 0.5rem;
   align-items: center;
 }
@@ -467,6 +467,12 @@ body {
   padding: 1rem;
   border-bottom: 1px solid #e0e0e0;
   font-size: 0.875rem;
+}
+
+.cg-preview-assignee {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .cg-preview-body {

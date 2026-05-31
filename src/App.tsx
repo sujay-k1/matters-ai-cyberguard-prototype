@@ -604,6 +604,7 @@ function App() {
               <div id="preview-drawer">
                 <PreviewDrawer
                   item={previewItem}
+                  currentAnalyst={CURRENT_ANALYST}
                   onClose={() => setPreviewItemId(null)}
                   onAssignToMe={() => {
                     setItems((current) =>

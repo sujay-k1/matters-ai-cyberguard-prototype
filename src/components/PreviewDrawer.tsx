@@ -4,6 +4,7 @@ import type { WorkItem } from '../types/queue';
 
 interface PreviewDrawerProps {
   item: WorkItem;
+  currentAnalyst: string;
   onClose: () => void;
   onAssignToMe: () => void;
   onOpenInvestigation: () => void;
@@ -12,12 +13,14 @@ interface PreviewDrawerProps {
 
 export function PreviewDrawer({
   item,
+  currentAnalyst,
   onClose,
   onAssignToMe,
   onOpenInvestigation,
   onMoreActions,
 }: PreviewDrawerProps) {
   const preview = item.preview;
+  const showAssignToMe = item.assignee !== currentAnalyst;
 
   return (
     <aside className="cg-preview-drawer" aria-label="Item preview" tabIndex={-1}>
@@ -41,7 +44,14 @@ export function PreviewDrawer({
         <Tag type="red">{item.severity}</Tag>
         <Tag type="gray">{item.priority}</Tag>
         <Tag type="purple">{item.status}</Tag>
-        <span>Assigned to {item.assignee}</span>
+        <span className="cg-preview-assignee">
+          <span>Assigned to {item.assignee}</span>
+          {showAssignToMe ? (
+            <Button kind="tertiary" size="sm" onClick={onAssignToMe}>
+              Assign to me
+            </Button>
+          ) : null}
+        </span>
         <span>{item.sla} SLA</span>
       </section>
 
@@ -98,10 +108,7 @@ export function PreviewDrawer({
       </div>
 
       <footer>
-        <Button size="sm" onClick={onAssignToMe}>
-          Assign to me
-        </Button>
-        <Button kind="secondary" size="sm" onClick={onOpenInvestigation}>
+        <Button size="sm" onClick={onOpenInvestigation}>
           Open investigation
         </Button>
         <Button kind="ghost" size="sm" onClick={onMoreActions}>
