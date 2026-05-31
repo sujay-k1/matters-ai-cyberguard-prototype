@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=1440, initial-scale=1.0" name="viewport"/>
+<title>CyberGuard | Work Queue</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;600;700&amp;family=IBM+Plex+Mono&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface-dim": "#dcd9d9",
+                    "inverse-primary": "#b4c5ff",
+                    "on-tertiary-fixed-variant": "#5c14b7",
+                    "on-error": "#ffffff",
+                    "on-tertiary-fixed": "#270057",
+                    "layer-1": "#FFFFFF",
+                    "on-secondary-container": "#656464",
+                    "on-secondary-fixed": "#1b1c1c",
+                    "outline": "#737687",
+                    "high": "#FF832B",
+                    "surface-container-low": "#f6f3f2",
+                    "status-assigned-text": "#005D5D",
+                    "layer-0": "#F4F4F4",
+                    "surface-container-highest": "#e5e2e1",
+                    "surface-container": "#f0edec",
+                    "on-tertiary-container": "#faf1ff",
+                    "on-background": "#1c1b1b",
+                    "on-primary-fixed": "#00174c",
+                    "surface-container-high": "#eae7e7",
+                    "primary-fixed": "#dbe1ff",
+                    "on-tertiary": "#ffffff",
+                    "primary-fixed-dim": "#b4c5ff",
+                    "surface-bright": "#fcf9f8",
+                    "error": "#ba1a1a",
+                    "outline-variant": "#c3c6d8",
+                    "on-error-container": "#93000a",
+                    "error-container": "#ffdad6",
+                    "status-assigned-bg": "#D9FBFB",
+                    "border-subtle": "#E0E0E0",
+                    "primary-container": "#0f62fe",
+                    "status-new-text": "#0043CE",
+                    "background": "#fcf9f8",
+                    "inverse-surface": "#313030",
+                    "secondary-fixed": "#e4e2e1",
+                    "on-primary-fixed-variant": "#003da9",
+                    "critical": "#DA1E28",
+                    "status-approval-text": "#A24300",
+                    "surface": "#fcf9f8",
+                    "status-approval-bg": "#FFE6D5",
+                    "surface-container-lowest": "#ffffff",
+                    "on-surface": "#1c1b1b",
+                    "low": "#8D8D8D",
+                    "status-new-bg": "#D0E2FF",
+                    "on-secondary-fixed-variant": "#474747",
+                    "status-investigating-text": "#6929C4",
+                    "surface-tint": "#0052dd",
+                    "primary": "#004ccd",
+                    "tertiary-fixed-dim": "#d5bbff",
+                    "secondary-fixed-dim": "#c8c6c6",
+                    "on-surface-variant": "#424656",
+                    "on-secondary": "#ffffff",
+                    "tertiary-container": "#874de3",
+                    "status-investigating-bg": "#E8DAFF",
+                    "on-primary-container": "#f3f3ff",
+                    "success": "#24A148",
+                    "border-strong": "#8D8D8D",
+                    "surface-variant": "#e5e2e1",
+                    "medium": "#F1C21B",
+                    "on-primary": "#ffffff",
+                    "inverse-on-surface": "#f3f0ef",
+                    "tertiary": "#6e2fc9",
+                    "secondary": "#5f5e5e",
+                    "secondary-container": "#e4e2e1",
+                    "layer-2": "#F4F4F4",
+                    "tertiary-fixed": "#ecdcff"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "margin-desktop": "32px",
+                    "xs": "4px",
+                    "unit": "4px",
+                    "margin-mobile": "16px",
+                    "gutter": "16px",
+                    "lg": "16px",
+                    "sm": "8px",
+                    "md": "12px",
+                    "xl": "24px"
+            },
+            "fontFamily": {
+                    "label-caps": ["IBM Plex Sans"],
+                    "helper-text": ["IBM Plex Sans"],
+                    "body-mono": ["IBM Plex Mono"],
+                    "body-bold": ["IBM Plex Sans"],
+                    "headline-md": ["IBM Plex Sans"],
+                    "display-lg": ["IBM Plex Sans"],
+                    "body-base": ["IBM Plex Sans"],
+                    "headline-md-mobile": ["IBM Plex Sans"]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body {
+            font-family: 'IBM Plex Sans', sans-serif;
+            background-color: #fcf9f8;
+            color: #1c1b1b;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 20;
+            font-size: 20px;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+            height: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f4f4f4;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #8d8d8d;
+        }
+        .sticky-col {
+            position: sticky;
+            z-index: 10;
+        }
+        .table-row-hover:hover .row-checkbox {
+            opacity: 1;
+        }
+        .row-checkbox {
+            opacity: 0;
+            transition: opacity 0.15s ease;
+        }
+        .row-checkbox:checked {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body class="overflow-hidden flex flex-col h-screen">
+<!-- 1. GLOBAL HEADER -->
+<header class="w-full shrink-0 flex justify-between items-center px-lg bg-[#161616] h-[48px] text-white z-50">
+<div class="flex items-center gap-xl h-full">
+<div class="flex items-center gap-sm">
+<span class="material-symbols-outlined text-white">grid_view</span>
+<span class="font-bold text-[18px] text-white tracking-tight">CyberGuard</span>
+</div>
+<nav class="flex h-full ml-xl">
+<a class="text-secondary-fixed-dim hover:text-white h-full flex items-center px-4 text-sm transition-colors" href="#">Overview</a>
+<a class="text-white border-b-2 border-primary-container h-full flex items-center px-4 text-sm font-semibold" href="#">Work Queue</a>
+<a class="text-secondary-fixed-dim hover:text-white h-full flex items-center px-4 text-sm transition-colors" href="#">Activity Log</a>
+</nav>
+</div>
+<div class="flex items-center gap-md">
+<span class="material-symbols-outlined cursor-pointer hover:bg-white/10 p-sm rounded">search</span>
+<span class="material-symbols-outlined cursor-pointer hover:bg-white/10 p-sm rounded">notifications</span>
+<span class="material-symbols-outlined cursor-pointer hover:bg-white/10 p-sm rounded">help</span>
+<div class="w-8 h-8 rounded-full bg-surface-variant flex items-center justify-center overflow-hidden border border-white/20">
+<img alt="User Profile Avatar" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBL7xYank2gW7u_nAOMDfzecAVgDA2ZNn-tC-O9M-F6iPX51p0borOIUgDIPlyIDcULSVqkYNwQtayJjivzp1bw64yW-JkeYMAUN_LLXP-qBwxKoRv0R-vVSQpg1oZEssyi7r_Uu9CATGU4CTgtxg-5_gbRUOw5m9EPyubDEaiVHzc3PLjlQ_st4O-h5i6cwdLcupJRYkr5sTuKCgNMdWLnk3S_8HeRdz31BtiY8gPaDbn1KLmT3CLS46nZ6H5ykAHqGFF3dnkQ"/>
+</div>
+</div>
+</header>
+<!-- 2. FULL-WIDTH PAGE HEADER -->
+<div class="bg-white border-b border-border-subtle px-xl py-lg flex justify-between items-end w-full shrink-0">
+<div class="flex flex-col gap-xs">
+<h1 class="text-2xl font-bold text-on-surface">Work Queue</h1>
+<p class="text-sm text-secondary">
+<span class="font-bold text-on-surface">48 open items</span> · 9 critical · <span class="text-critical font-bold">3 SLA breached</span> · 11 unassigned
+        </p>
+</div>
+<div class="flex items-center gap-xl text-[12px] text-secondary">
+<div class="flex items-center gap-sm">
+<span>Refreshed just now</span>
+<span class="material-symbols-outlined cursor-pointer hover:bg-layer-0 p-1 text-[18px]">refresh</span>
+</div>
+<div class="flex items-center gap-sm">
+<span>Auto-refresh</span>
+<div class="w-8 h-4 bg-primary-container rounded-full relative cursor-pointer">
+<div class="absolute right-0.5 top-0.5 w-3 h-3 bg-white rounded-full"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- 3. QUEUE TOOLBAR -->
+<div class="bg-white border-b border-border-subtle px-xl py-sm flex justify-between items-center w-full shrink-0">
+<div class="flex items-center gap-lg">
+<!-- Segmented Control -->
+<div class="flex border border-border-subtle rounded p-0.5 bg-layer-0">
+<button class="px-lg py-1 bg-white text-on-surface text-sm font-semibold rounded shadow-sm">All 48</button>
+<button class="px-lg py-1 text-secondary text-sm hover:text-on-surface">Cases 31</button>
+<button class="px-lg py-1 text-secondary text-sm hover:text-on-surface">Alerts 17</button>
+</div>
+<!-- Search Input -->
+<div class="relative">
+<span class="material-symbols-outlined absolute left-sm top-1/2 -translate-y-1/2 text-secondary text-[18px]">search</span>
+<input class="w-96 bg-layer-0 border border-border-subtle rounded pl-9 pr-sm py-1.5 text-sm focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-all" placeholder="Search cases, alerts, users, or resources" type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-md">
+<button class="flex items-center gap-xs text-sm text-secondary hover:text-on-surface bg-layer-0 px-md py-1.5 border border-border-subtle rounded">
+<span class="material-symbols-outlined text-[18px]">sort</span> Priority: Highest first
+        </button>
+<button class="flex items-center gap-xs text-sm text-secondary hover:text-on-surface bg-layer-0 px-md py-1.5 border border-border-subtle rounded">
+<span class="material-symbols-outlined text-[18px]">view_column</span> Columns
+        </button>
+</div>
+</div>
+<!-- 4. BODY LAYOUT -->
+<div class="flex flex-1 overflow-hidden relative">
+<!-- 5. FILTER PANEL (Left Column) -->
+<aside class="w-[240px] shrink-0 bg-white border-r border-border-subtle flex flex-col h-full z-30">
+<div class="p-lg border-b border-border-subtle">
+<span class="text-[11px] font-bold tracking-widest text-secondary">FILTERS</span>
+</div>
+<div class="flex-1 overflow-y-auto custom-scrollbar">
+<div class="flex flex-col"><div class="group relative">
+<button class="w-full px-lg py-1.5 flex items-center justify-between text-sm text-on-surface font-semibold bg-layer-0">
+<div class="flex items-center gap-sm">
+<span class="material-symbols-outlined text-[18px]">dns</span> Systems
+    </div>
+<span class="material-symbols-outlined text-[18px]">expand_more</span>
+</button>
+<div class="px-lg pb-sm pt-xs flex flex-wrap gap-xs bg-layer-0">
+<span class="inline-flex items-center gap-1 px-sm py-0.5 bg-primary/10 text-primary text-[11px] font-medium rounded-full">
+      Cloud platforms <span class="material-symbols-outlined text-[12px] cursor-pointer">close</span>
+</span>
+<span class="inline-flex items-center gap-1 px-sm py-0.5 bg-primary/10 text-primary text-[11px] font-medium rounded-full">
+      Endpoints &amp; devices <span class="material-symbols-outlined text-[12px] cursor-pointer">close</span>
+</span>
+</div>
+</div>
+<button class="w-full px-lg py-1.5 flex items-center justify-between text-sm text-secondary hover:text-on-surface hover:bg-layer-2">
+  Severity <span class="material-symbols-outlined text-[18px]">chevron_right</span>
+</button>
+<button class="w-full px-lg py-1.5 flex items-center justify-between text-sm text-secondary hover:text-on-surface hover:bg-layer-2">
+  Priority <span class="material-symbols-outlined text-[18px]">chevron_right</span>
+</button>
+<button class="w-full px-lg py-1.5 flex items-center justify-between text-sm text-secondary hover:text-on-surface hover:bg-layer-2">
+  Risk type <span class="material-symbols-outlined text-[18px]">chevron_right</span>
+</button>
+<button class="w-full px-lg py-1.5 flex items-center justify-between text-sm text-secondary hover:text-on-surface hover:bg-layer-2">
+  Status <span class="material-symbols-outlined text-[18px]">chevron_right</span>
+</button>
+<button class="w-full px-lg py-1.5 flex items-center justify-between text-sm text-secondary hover:text-on-surface hover:bg-layer-2">
+  Assignee <span class="material-symbols-outlined text-[18px]">chevron_right</span>
+</button>
+<button class="w-full px-lg py-1.5 flex items-center justify-between text-sm text-secondary hover:text-on-surface hover:bg-layer-2">
+  SLA <span class="material-symbols-outlined text-[18px]">chevron_right</span>
+</button>
+<button class="w-full px-lg py-1.5 flex items-center justify-between text-sm text-secondary hover:text-on-surface hover:bg-layer-2">
+  Data sensitivity <span class="material-symbols-outlined text-[18px]">chevron_right</span>
+</button>
+<button class="w-full px-lg py-1.5 flex items-center justify-between text-sm text-secondary hover:text-on-surface hover:bg-layer-2">
+  Containment <span class="material-symbols-outlined text-[18px]">chevron_right</span>
+</button>
+<button class="w-full px-lg py-1.5 flex items-center justify-between text-sm text-secondary hover:text-on-surface hover:bg-layer-2">
+  Detection time <span class="material-symbols-outlined text-[18px]">chevron_right</span>
+</button>
+<button class="w-full px-lg py-1.5 flex items-center justify-between text-sm text-secondary hover:text-on-surface hover:bg-layer-2">
+  Last activity <span class="material-symbols-outlined text-[18px]">chevron_right</span>
+</button>
+<button class="w-full px-lg py-1.5 flex items-center justify-between text-sm text-secondary hover:text-on-surface hover:bg-layer-2">
+  Actor / entity type <span class="material-symbols-outlined text-[18px]">chevron_right</span>
+</button>
+<button class="w-full px-lg py-1.5 flex items-center justify-between text-sm text-secondary hover:text-on-surface hover:bg-layer-2">
+  Resource criticality <span class="material-symbols-outlined text-[18px]">chevron_right</span>
+</button>
+<button class="w-full px-lg py-1.5 flex items-center justify-between text-sm text-secondary hover:text-on-surface hover:bg-layer-2">
+  External destination <span class="material-symbols-outlined text-[18px]">chevron_right</span>
+</button>
+<button class="w-full px-lg py-1.5 flex items-center justify-between text-sm text-secondary hover:text-on-surface hover:bg-layer-2">
+  AI confidence <span class="material-symbols-outlined text-[18px]">chevron_right</span>
+</button>
+<button class="w-full px-lg py-1.5 flex items-center justify-between text-sm text-secondary hover:text-on-surface hover:bg-layer-2">
+  Automated investigation <span class="material-symbols-outlined text-[18px]">chevron_right</span>
+</button>
+<button class="w-full px-lg py-1.5 flex items-center justify-between text-sm text-secondary hover:text-on-surface hover:bg-layer-2">
+  Detection source <span class="material-symbols-outlined text-[18px]">chevron_right</span>
+</button>
+<button class="w-full px-lg py-1.5 flex items-center justify-between text-sm text-secondary hover:text-on-surface hover:bg-layer-2">
+  Alert count <span class="material-symbols-outlined text-[18px]">chevron_right</span>
+</button></div>
+</div>
+</aside>
+<!-- 6. ENTERPRISE TABLE (Right Column) -->
+<main class="flex-1 overflow-auto custom-scrollbar bg-layer-0 relative">
+<table class="w-full text-left border-collapse min-w-[2000px]">
+<thead class="bg-white border-b border-border-strong sticky top-0 z-20">
+<tr>
+<th class="px-md py-sm sticky-col left-0 bg-white w-10">
+<input class="rounded border-border-strong text-primary focus:ring-primary" type="checkbox"/>
+</th>
+<th class="px-lg py-sm sticky-col left-10 bg-white text-[11px] font-bold text-secondary uppercase tracking-wider w-16">Type</th>
+<th class="px-lg py-sm sticky-col left-[104px] bg-white text-[11px] font-bold text-secondary uppercase tracking-wider w-24">Priority</th>
+<th class="px-lg py-sm sticky-col left-[200px] bg-white text-[11px] font-bold text-secondary uppercase tracking-wider w-28">Severity</th>
+<th class="px-lg py-sm sticky-col left-[312px] bg-white text-[11px] font-bold text-secondary uppercase tracking-wider w-[400px]">Title</th>
+<th class="px-lg py-sm text-[11px] font-bold text-secondary uppercase tracking-wider w-32">ID</th>
+<th class="px-lg py-sm text-[11px] font-bold text-secondary uppercase tracking-wider w-48">Risk Type</th>
+<th class="px-lg py-sm text-[11px] font-bold text-secondary uppercase tracking-wider w-32">Status</th>
+<th class="px-lg py-sm text-[11px] font-bold text-secondary uppercase tracking-wider w-40">Assignee</th>
+<th class="px-lg py-sm text-[11px] font-bold text-secondary uppercase tracking-wider w-32">SLA</th>
+<th class="px-lg py-sm text-[11px] font-bold text-secondary uppercase tracking-wider w-40">Detection Source</th>
+<th class="px-lg py-sm text-[11px] font-bold text-secondary uppercase tracking-wider w-40">Last Activity</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-border-subtle bg-white">
+<!-- Row 1: Selected/Drawer Triggered State -->
+<tr class="table-row-hover transition-colors cursor-pointer bg-primary/5">
+<td class="px-md py-md sticky-col left-0 bg-inherit">
+<input class="row-checkbox rounded border-border-strong text-primary focus:ring-primary" type="checkbox"/>
+</td>
+<td class="px-lg py-md sticky-col left-10 bg-inherit">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">inventory_2</span>
+</td>
+<td class="px-lg py-md sticky-col left-[104px] bg-inherit font-bold text-sm">P1 · 92</td>
+<td class="px-lg py-md sticky-col left-[200px] bg-inherit">
+<span class="inline-flex items-center px-sm py-0.5 bg-error text-white text-[10px] font-bold rounded">CRITICAL</span>
+</td>
+<td class="px-lg py-md sticky-col left-[312px] bg-inherit font-semibold text-sm truncate max-w-md">Potential customer-data exfiltration by Rohan Mehta</td>
+<td class="px-lg py-md font-mono text-[12px] text-secondary">CASE-1048</td>
+<td class="px-lg py-md text-sm">Abnormal data movement</td>
+<td class="px-lg py-md">
+<span class="px-sm py-1 bg-status-investigating-bg text-status-investigating-text text-[10px] font-bold rounded">INVESTIGATING</span>
+</td>
+<td class="px-lg py-md text-sm">Priya Sharma</td>
+<td class="px-lg py-md text-critical font-bold text-sm">18m left</td>
+<td class="px-lg py-md text-sm text-secondary">Data Loss Prevention</td>
+<td class="px-lg py-md text-sm text-secondary">2m ago</td>
+</tr>
+<!-- Row 2 -->
+<tr class="table-row-hover transition-colors cursor-pointer">
+<td class="px-md py-md sticky-col left-0 bg-inherit">
+<input class="row-checkbox rounded border-border-strong text-primary focus:ring-primary" type="checkbox"/>
+</td>
+<td class="px-lg py-md sticky-col left-10 bg-inherit">
+<span class="material-symbols-outlined text-secondary">notifications</span>
+</td>
+<td class="px-lg py-md sticky-col left-[104px] bg-inherit font-bold text-sm">P1 · 88</td>
+<td class="px-lg py-md sticky-col left-[200px] bg-inherit">
+<span class="inline-flex items-center px-sm py-0.5 bg-error text-white text-[10px] font-bold rounded">CRITICAL</span>
+</td>
+<td class="px-lg py-md sticky-col left-[312px] bg-inherit font-semibold text-sm truncate max-w-md">Public access enabled for production customer-data bucket</td>
+<td class="px-lg py-md font-mono text-[12px] text-secondary">ALERT-2391</td>
+<td class="px-lg py-md text-sm">Sensitive data exposure</td>
+<td class="px-lg py-md">
+<span class="px-sm py-1 bg-status-new-bg text-status-new-text text-[10px] font-bold rounded">NEW</span>
+</td>
+<td class="px-lg py-md text-sm text-secondary">—</td>
+<td class="px-lg py-md text-critical font-bold text-sm">12m left</td>
+<td class="px-lg py-md text-sm text-secondary">CSPM Scanner</td>
+<td class="px-lg py-md text-sm text-secondary">15m ago</td>
+</tr>
+<!-- Row 3 -->
+<tr class="table-row-hover transition-colors cursor-pointer">
+<td class="px-md py-md sticky-col left-0 bg-inherit">
+<input class="row-checkbox rounded border-border-strong text-primary focus:ring-primary" type="checkbox"/>
+</td>
+<td class="px-lg py-md sticky-col left-10 bg-inherit">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">inventory_2</span>
+</td>
+<td class="px-lg py-md sticky-col left-[104px] bg-inherit font-bold text-sm">P2 · 74</td>
+<td class="px-lg py-md sticky-col left-[200px] bg-inherit">
+<span class="inline-flex items-center px-sm py-0.5 bg-high text-white text-[10px] font-bold rounded">HIGH</span>
+</td>
+<td class="px-lg py-md sticky-col left-[312px] bg-inherit font-semibold text-sm truncate max-w-md">Risky external sharing detected on Finance Drive</td>
+<td class="px-lg py-md font-mono text-[12px] text-secondary">CASE-1052</td>
+<td class="px-lg py-md text-sm">Privileged access misuse</td>
+<td class="px-lg py-md">
+<span class="px-sm py-1 bg-status-assigned-bg text-status-assigned-text text-[10px] font-bold rounded">ASSIGNED</span>
+</td>
+<td class="px-lg py-md text-sm">Arjun Rao</td>
+<td class="px-lg py-md text-sm">1h 14m left</td>
+<td class="px-lg py-md text-sm text-secondary">CASB Audit</td>
+<td class="px-lg py-md text-sm text-secondary">42m ago</td>
+</tr>
+<!-- Row 4 -->
+<tr class="table-row-hover transition-colors cursor-pointer">
+<td class="px-md py-md sticky-col left-0 bg-inherit">
+<input class="row-checkbox rounded border-border-strong text-primary focus:ring-primary" type="checkbox"/>
+</td>
+<td class="px-lg py-md sticky-col left-10 bg-inherit">
+<span class="material-symbols-outlined text-secondary">notifications</span>
+</td>
+<td class="px-lg py-md sticky-col left-[104px] bg-inherit font-bold text-sm">P2 · 68</td>
+<td class="px-lg py-md sticky-col left-[200px] bg-inherit">
+<span class="inline-flex items-center px-sm py-0.5 bg-high text-white text-[10px] font-bold rounded">HIGH</span>
+</td>
+<td class="px-lg py-md sticky-col left-[312px] bg-inherit font-semibold text-sm">
+<div class="flex items-center gap-sm">
+<span class="truncate">Unusual database export detected</span>
+<span class="flex items-center gap-xs px-xs py-0.5 bg-tertiary-fixed text-tertiary text-[10px] font-bold rounded">
+<span class="material-symbols-outlined text-[12px]" style="font-variation-settings: 'FILL' 1;">bolt</span> AI: 2 RELATED
+                            </span>
+</div>
+</td>
+<td class="px-lg py-md font-mono text-[12px] text-secondary">ALERT-2408</td>
+<td class="px-lg py-md text-sm">Unauthorized database access</td>
+<td class="px-lg py-md">
+<span class="px-sm py-1 bg-status-new-bg text-status-new-text text-[10px] font-bold rounded">NEW</span>
+</td>
+<td class="px-lg py-md text-sm text-secondary">—</td>
+<td class="px-lg py-md text-sm">2h 44m left</td>
+<td class="px-lg py-md text-sm text-secondary">SIEM Threat Model</td>
+<td class="px-lg py-md text-sm text-secondary">1h ago</td>
+</tr>
+<!-- Row 5 -->
+<tr class="table-row-hover transition-colors cursor-pointer">
+<td class="px-md py-md sticky-col left-0 bg-inherit">
+<input class="row-checkbox rounded border-border-strong text-primary focus:ring-primary" type="checkbox"/>
+</td>
+<td class="px-lg py-md sticky-col left-10 bg-inherit">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">inventory_2</span>
+</td>
+<td class="px-lg py-md sticky-col left-[104px] bg-inherit font-bold text-sm">P3 · 45</td>
+<td class="px-lg py-md sticky-col left-[200px] bg-inherit">
+<span class="inline-flex items-center px-sm py-0.5 bg-medium text-white text-[10px] font-bold rounded">MEDIUM</span>
+</td>
+<td class="px-lg py-md sticky-col left-[312px] bg-inherit font-semibold text-sm truncate max-w-md">Suspicious login from new geographical location</td>
+<td class="px-lg py-md font-mono text-[12px] text-secondary">CASE-1036</td>
+<td class="px-lg py-md text-sm">Suspicious activity</td>
+<td class="px-lg py-md">
+<span class="px-sm py-1 bg-status-assigned-bg text-status-assigned-text text-[10px] font-bold rounded">ASSIGNED</span>
+</td>
+<td class="px-lg py-md text-sm">James Chen</td>
+<td class="px-lg py-md text-sm">4h 12m left</td>
+<td class="px-lg py-md text-sm text-secondary">Identity Engine</td>
+<td class="px-lg py-md text-sm text-secondary">3h ago</td>
+</tr>
+<!-- Row 6 -->
+<tr class="table-row-hover transition-colors cursor-pointer">
+<td class="px-md py-md sticky-col left-0 bg-inherit">
+<input class="row-checkbox rounded border-border-strong text-primary focus:ring-primary" type="checkbox"/>
+</td>
+<td class="px-lg py-md sticky-col left-10 bg-inherit">
+<span class="material-symbols-outlined text-secondary">notifications</span>
+</td>
+<td class="px-lg py-md sticky-col left-[104px] bg-inherit font-bold text-sm">P4 · 12</td>
+<td class="px-lg py-md sticky-col left-[200px] bg-inherit">
+<span class="inline-flex items-center px-sm py-0.5 bg-low text-white text-[10px] font-bold rounded">LOW</span>
+</td>
+<td class="px-lg py-md sticky-col left-[312px] bg-inherit font-semibold text-sm truncate max-w-md">Large attachment sent to personal email domain</td>
+<td class="px-lg py-md font-mono text-[12px] text-secondary">ALERT-2367</td>
+<td class="px-lg py-md text-sm">Misconfiguration</td>
+<td class="px-lg py-md">
+<span class="px-sm py-1 bg-status-new-bg text-status-new-text text-[10px] font-bold rounded">NEW</span>
+</td>
+<td class="px-lg py-md text-sm text-secondary">—</td>
+<td class="px-lg py-md text-sm text-secondary">SLA N/A</td>
+<td class="px-lg py-md text-sm text-secondary">Email Security</td>
+<td class="px-lg py-md text-sm text-secondary">5h ago</td>
+</tr>
+</tbody>
+</table>
+<!-- 8. BULK ACTIONS (Sticky bar) -->
+</main>
+<!-- 7. PREVIEW DRAWER -->
+<aside class="absolute right-0 top-0 h-full w-[420px] bg-white shadow-[-8px_0_24px_-12px_rgba(0,0,0,0.15)] border-l border-border-subtle z-40 flex flex-col">
+<div class="flex flex-col h-full">
+<div class="p-xl border-b border-border-subtle relative">
+<button class="absolute top-lg right-lg text-secondary hover:text-on-surface">
+<span class="material-symbols-outlined">close</span>
+</button>
+<div class="flex flex-col gap-xs">
+<span class="text-[11px] font-bold text-secondary uppercase tracking-widest">CASE SUMMARY</span>
+<h2 class="text-xl font-bold text-on-surface">CASE-1048</h2>
+<p class="text-sm text-on-surface font-medium mt-1">Potential customer-data exfiltration by Rohan Mehta</p>
+<div class="flex flex-wrap gap-sm mt-md">
+<span class="inline-flex items-center px-sm py-0.5 bg-error text-white text-[10px] font-bold rounded">CRITICAL</span>
+<span class="inline-flex items-center px-sm py-0.5 bg-layer-2 text-on-surface text-[10px] font-bold rounded border border-border-subtle">P1 · 92</span>
+<span class="inline-flex items-center px-sm py-0.5 bg-status-investigating-bg text-status-investigating-text text-[10px] font-bold rounded">INVESTIGATING</span>
+</div>
+<div class="flex flex-col gap-1 mt-md text-[12px] text-secondary">
+<div class="flex items-center gap-xs">
+<span class="material-symbols-outlined text-[16px]">person</span>
+<span>Assigned to Priya Sharma</span>
+</div>
+<div class="flex items-center gap-xs">
+<span class="material-symbols-outlined text-[16px] text-critical">timer</span>
+<span class="text-critical font-bold">SLA: 18m left</span>
+</div>
+</div>
+</div>
+</div>
+<div class="flex-1 overflow-y-auto custom-scrollbar p-xl flex flex-col gap-xl">
+<section>
+<h3 class="text-[11px] font-bold text-secondary uppercase tracking-widest mb-sm flex items-center gap-xs">
+<span class="material-symbols-outlined text-[16px] text-tertiary">bolt</span> AI SUMMARY
+        </h3>
+<p class="text-sm text-on-surface leading-relaxed bg-tertiary-fixed/30 p-md rounded">
+          Rohan Mehta exported 85,000 customer records from Snowflake and uploaded a CSV file to a personal Google Drive account. The activity is 42× above his normal baseline.
+        </p>
+</section>
+<section>
+<h3 class="text-[11px] font-bold text-secondary uppercase tracking-widest mb-sm">WHY PRIORITIZED</h3>
+<ul class="list-disc list-inside text-sm text-on-surface space-y-1">
+<li>Customer PII involved</li>
+<li>Activity is ongoing</li>
+<li>External destination detected</li>
+<li>Production database involved</li>
+<li>Four correlated alerts across three systems</li>
+</ul>
+</section>
+<div class="grid grid-cols-1 gap-lg">
+<section>
+<h3 class="text-[11px] font-bold text-secondary uppercase tracking-widest mb-xs">AFFECTED SYSTEMS</h3>
+<p class="text-[13px] text-on-surface">Snowflake — Customer billing database, Managed MacBook — DEV-4032, Google Drive — Personal account</p>
+</section>
+<section>
+<h3 class="text-[11px] font-bold text-secondary uppercase tracking-widest mb-xs">ACTORS</h3>
+<p class="text-[13px] text-on-surface">Rohan Mehta, Personal Gmail destination, Endpoint DEV-4032</p>
+</section>
+<section>
+<h3 class="text-[11px] font-bold text-secondary uppercase tracking-widest mb-xs">AFFECTED DATA</h3>
+<p class="text-[13px] text-on-surface">85,000 customer records (Names, Email addresses, Billing details)</p>
+</section>
+<section>
+<h3 class="text-[11px] font-bold text-secondary uppercase tracking-widest mb-xs">EXTERNAL DESTINATION</h3>
+<p class="text-[13px] text-on-surface">Personal Google Drive account (External domain)</p>
+</section>
+<section>
+<h3 class="text-[11px] font-bold text-secondary uppercase tracking-widest mb-xs">RESOURCE CRITICALITY</h3>
+<p class="text-[13px] text-on-surface">Production customer billing database (High business criticality)</p>
+</section>
+<section>
+<h3 class="text-[11px] font-bold text-secondary uppercase tracking-widest mb-xs">GROUPING RATIONALE</h3>
+<p class="text-[13px] text-on-surface italic">"These alerts share the same user, endpoint, affected data, and 20-minute activity window."</p>
+</section>
+</div>
+<div class="grid grid-cols-2 gap-lg border-t border-border-subtle pt-xl">
+<section>
+<h3 class="text-[11px] font-bold text-secondary uppercase tracking-widest mb-xs">AI CONFIDENCE</h3>
+<p class="text-sm font-semibold text-success">High confidence (91%)</p>
+</section>
+<section>
+<h3 class="text-[11px] font-bold text-secondary uppercase tracking-widest mb-xs">INVESTIGATION</h3>
+<p class="text-sm text-on-surface">Completed</p>
+</section>
+<section>
+<h3 class="text-[11px] font-bold text-secondary uppercase tracking-widest mb-xs">CONTAINMENT</h3>
+<p class="text-sm text-critical font-bold">Not contained</p>
+</section>
+<section>
+<h3 class="text-[11px] font-bold text-secondary uppercase tracking-widest mb-xs">RECOMMENDED</h3>
+<p class="text-sm text-on-surface">Revoke active session</p>
+</section>
+</div>
+</div>
+<div class="p-xl border-t border-border-subtle bg-layer-1 flex items-center gap-md">
+<button class="flex-1 bg-primary text-white text-sm font-bold py-2 rounded">Assign to me</button>
+<button class="flex-1 bg-layer-0 border border-border-subtle text-on-surface text-sm font-bold py-2 rounded">Open investigation</button>
+<button class="p-2 text-secondary hover:bg-layer-0 rounded border border-border-subtle">
+<span class="material-symbols-outlined">more_horiz</span>
+</button>
+</div>
+</div>
+</aside></div>
+</body></html>
