@@ -2,24 +2,32 @@ import { useEffect, useRef } from 'react';
 
 interface ShortcutHandlers {
   isFilterModeActive: boolean;
+  onToggleShortcutOverlays: () => void;
   onFocusQueueSearch: () => void;
+  onFocusFilterSearch: () => void;
   onOpenShortcutGuide: () => void;
   onFocusFilters: () => void;
   onFocusToolbar: () => void;
   onFocusList: () => void;
   onFocusPagination: () => void;
+  onFocusPreview: () => void;
+  onFocusBulkActions: () => void;
   onEscape: () => void;
   onFilterModeKey: (key: string, event: KeyboardEvent) => boolean;
 }
 
 export function useKeyboardShortcuts({
   isFilterModeActive,
+  onToggleShortcutOverlays,
   onFocusQueueSearch,
+  onFocusFilterSearch,
   onOpenShortcutGuide,
   onFocusFilters,
   onFocusToolbar,
   onFocusList,
   onFocusPagination,
+  onFocusPreview,
+  onFocusBulkActions,
   onEscape,
   onFilterModeKey,
 }: ShortcutHandlers) {
@@ -58,6 +66,13 @@ export function useKeyboardShortcuts({
         return;
       }
 
+      if (!isTypingTarget && event.key === 'Alt') {
+        event.preventDefault();
+        clearPrefix();
+        onToggleShortcutOverlays();
+        return;
+      }
+
       if (isFilterModeActive && onFilterModeKey(event.key, event)) {
         return;
       }
@@ -73,6 +88,40 @@ export function useKeyboardShortcuts({
         clearPrefix();
         onFocusQueueSearch();
         return;
+      }
+
+      if (!isTypingTarget && event.shiftKey) {
+        const key = event.key.toLowerCase();
+        if (key === 'f') {
+          event.preventDefault();
+          clearPrefix();
+          onFocusFilterSearch();
+          return;
+        }
+        if (key === 's') {
+          event.preventDefault();
+          clearPrefix();
+          onFocusQueueSearch();
+          return;
+        }
+        if (key === 'l') {
+          event.preventDefault();
+          clearPrefix();
+          onFocusList();
+          return;
+        }
+        if (key === 'p') {
+          event.preventDefault();
+          clearPrefix();
+          onFocusPreview();
+          return;
+        }
+        if (key === 'b') {
+          event.preventDefault();
+          clearPrefix();
+          onFocusBulkActions();
+          return;
+        }
       }
 
       if (prefixRef.current === 'g') {
@@ -106,11 +155,15 @@ export function useKeyboardShortcuts({
     };
   }, [
     isFilterModeActive,
+    onToggleShortcutOverlays,
+    onFocusBulkActions,
+    onFocusFilterSearch,
     onEscape,
     onFilterModeKey,
     onFocusFilters,
     onFocusList,
     onFocusPagination,
+    onFocusPreview,
     onFocusQueueSearch,
     onFocusToolbar,
     onOpenShortcutGuide,

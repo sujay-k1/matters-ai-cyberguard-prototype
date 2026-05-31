@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { Search, Tag } from '@carbon/react';
 import { ChevronRight, Close } from '@carbon/icons-react';
 import type { FilterSection } from '../types/queue';
@@ -18,6 +19,8 @@ interface FilterPanelProps {
   onRemoveValue: (filterId: string, value: string) => void;
   onClearAll: () => void;
   shortcutLabelForIndex: (index: number) => string;
+  activeFilterPinned: boolean;
+  onHoverExit: () => void;
 }
 
 export function FilterPanel({
@@ -35,6 +38,8 @@ export function FilterPanel({
   onRemoveValue,
   onClearAll,
   shortcutLabelForIndex,
+  activeFilterPinned,
+  onHoverExit,
 }: FilterPanelProps) {
   const flattened = sections.flatMap((section) =>
     section.filters.map((filter) => ({ ...filter, section: section.section })),
@@ -42,15 +47,33 @@ export function FilterPanel({
   const visibleIds = new Set(flattened.map((filter) => filter.id));
   const activeFilter = flattened.find((filter) => filter.id === activeFilterId) ?? null;
   const activeSelections = Object.values(selectedFilters).flat().length;
+  const filterButtonRefs = useRef<Record<string, HTMLButtonElement | null>>({});
   let visibleFilterCounter = 0;
 
+  useEffect(() => {
+    if (focusedFilterId && !activeFilterId) {
+      filterButtonRefs.current[focusedFilterId]?.scrollIntoView({
+        block: 'nearest',
+      });
+    }
+  }, [activeFilterId, focusedFilterId]);
+
   return (
-    <section className="cg-filter-panel" id="filters-panel">
+    <section
+      className="cg-filter-panel"
+      id="filters-panel"
+      tabIndex={-1}
+      onMouseLeave={() => {
+        if (!activeFilterPinned) {
+          onHoverExit();
+        }
+      }}
+    >
       <div className="cg-filter-panel__header">
         <Search
           id="filter-search"
           labelText="Search filters"
-          placeholder="Search filters..."
+          placeholder="Search filters... (Shift+F)"
           size="sm"
           value={searchValue}
           onChange={(event) => onSearchChange(event.target.value)}
@@ -80,6 +103,9 @@ export function FilterPanel({
                   return (
                     <li key={filter.id}>
                       <button
+                        ref={(element) => {
+                          filterButtonRefs.current[filter.id] = element;
+                        }}
                         type="button"
                         className={[
                           'cg-filter-button',

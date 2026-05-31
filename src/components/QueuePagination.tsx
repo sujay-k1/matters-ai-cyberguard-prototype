@@ -26,7 +26,7 @@ export function QueuePagination({
   const end = Math.min(totalItems, page * pageSize);
 
   return (
-    <footer className="cg-pagination" id="queue-pagination">
+    <footer className="cg-pagination" id="queue-pagination" tabIndex={-1}>
       <span>
         {start}–{end} of {totalItems} items
       </span>
@@ -35,6 +35,7 @@ export function QueuePagination({
           id="page-size"
           label=""
           titleText=""
+          direction="top"
           items={pageSizes}
           selectedItem={pageSizes.find((option) => option.id === String(pageSize))}
           itemToString={(item) => item?.label ?? ''}

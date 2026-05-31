@@ -22,9 +22,10 @@ export function WorkQueueTable({
 }: WorkQueueTableProps) {
   const visibleColumns = columns.filter((column) => column.visible);
   const allSelected = items.length > 0 && items.every((item) => selectedIds.includes(item.id));
+  const pinnedColumns = visibleColumns.filter((column) => column.pinned);
 
   return (
-    <div className="cg-table-shell" id="queue-list">
+    <div className="cg-table-shell" id="queue-list" tabIndex={-1}>
       <div className="cg-table-scroll">
         <Table size="sm" useZebraStyles={false}>
           <TableHead>
@@ -40,8 +41,13 @@ export function WorkQueueTable({
               {visibleColumns.map((column, index) => (
                 <TableHeader
                   key={column.id}
-                  className={column.pinned ? 'cg-sticky-cell' : ''}
-                  style={column.pinned ? { left: stickyLeft(index, visibleColumns) } : { minWidth: column.width }}
+                  className={[
+                    column.pinned ? 'cg-sticky-cell' : '',
+                    column.id === pinnedColumns[pinnedColumns.length - 1]?.id ? 'cg-pinned-boundary' : '',
+                  ]
+                    .filter(Boolean)
+                    .join(' ')}
+                  style={cellStyle(column, index, visibleColumns)}
                 >
                   {column.label}
                 </TableHeader>
@@ -63,20 +69,31 @@ export function WorkQueueTable({
                     .join(' ')}
                   onClick={() => onOpenPreview(item.id)}
                 >
-                  <TableCell className="cg-sticky-cell cg-select-column" style={{ left: 0 }}>
+                  <TableCell
+                    className="cg-sticky-cell cg-select-column"
+                    style={{ left: 0 }}
+                    onClick={(event) => event.stopPropagation()}
+                    onMouseDown={(event) => event.stopPropagation()}
+                  >
                     <Checkbox
                       id={`select-${item.id}`}
                       checked={isSelected}
                       labelText=""
                       onClick={(event) => event.stopPropagation()}
+                      onMouseDown={(event) => event.stopPropagation()}
                       onChange={() => onToggleSelect(item.id)}
                     />
                   </TableCell>
                   {visibleColumns.map((column, index) => (
                     <TableCell
                       key={`${item.id}-${column.id}`}
-                      className={column.pinned ? 'cg-sticky-cell' : ''}
-                      style={column.pinned ? { left: stickyLeft(index, visibleColumns) } : { minWidth: column.width }}
+                      className={[
+                        column.pinned ? 'cg-sticky-cell' : '',
+                        column.id === pinnedColumns[pinnedColumns.length - 1]?.id ? 'cg-pinned-boundary' : '',
+                      ]
+                        .filter(Boolean)
+                        .join(' ')}
+                      style={cellStyle(column, index, visibleColumns)}
                     >
                       {renderCell(item, column.id)}
                     </TableCell>
@@ -89,6 +106,21 @@ export function WorkQueueTable({
       </div>
     </div>
   );
+}
+
+function cellStyle(column: ColumnDefinition, index: number, columns: ColumnDefinition[]) {
+  const base = {
+    width: `${column.width}px`,
+    minWidth: `${column.width}px`,
+    maxWidth: `${column.width}px`,
+  };
+  if (!column.pinned) {
+    return base;
+  }
+  return {
+    ...base,
+    left: stickyLeft(index, columns),
+  };
 }
 
 function renderCell(item: WorkItem, columnId: string) {

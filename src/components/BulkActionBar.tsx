@@ -2,6 +2,7 @@ import { Button } from '@carbon/react';
 
 interface BulkActionBarProps {
   selectedCount: number;
+  canConsolidate: boolean;
   onAssign: () => void;
   onStatus: () => void;
   onConsolidate: () => void;
@@ -11,6 +12,7 @@ interface BulkActionBarProps {
 
 export function BulkActionBar({
   selectedCount,
+  canConsolidate,
   onAssign,
   onStatus,
   onConsolidate,
@@ -27,9 +29,11 @@ export function BulkActionBar({
         <Button kind="ghost" size="sm" onClick={onStatus}>
           Change status
         </Button>
-        <Button kind="secondary" size="sm" onClick={onConsolidate}>
-          Consolidate into case
-        </Button>
+        {canConsolidate ? (
+          <Button kind="secondary" size="sm" onClick={onConsolidate}>
+            Consolidate into case
+          </Button>
+        ) : null}
         <Button kind="ghost" size="sm" onClick={onAddTag}>
           Add tag
         </Button>

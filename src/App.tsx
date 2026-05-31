@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Button,
+  ComboBox,
   Dropdown,
   Modal,
   Tag,
@@ -98,6 +99,7 @@ function App() {
   const [filterSearch, setFilterSearch] = useState('');
   const [selectedFilters, setSelectedFilters] = useState<Record<string, string[]>>({});
   const [activeFilterId, setActiveFilterId] = useState<string | null>(null);
+  const [activeFilterPinned, setActiveFilterPinned] = useState(false);
   const [filterModeActive, setFilterModeActive] = useState(false);
   const [focusedFilterIndex, setFocusedFilterIndex] = useState(0);
   const [focusedValueIndex, setFocusedValueIndex] = useState(0);
@@ -120,12 +122,15 @@ function App() {
   const [pendingTag, setPendingTag] = useState('Needs review');
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const [destinationCaseId, setDestinationCaseId] = useState<string | null>(null);
+  const [showShortcutOverlays, setShowShortcutOverlays] = useState(false);
 
   const queueSearchRef = useRef<HTMLInputElement | null>(null);
   const filterSearchRef = useRef<HTMLInputElement | null>(null);
   const toolbarRef = useRef<HTMLElement | null>(null);
   const listRef = useRef<HTMLElement | null>(null);
   const paginationRef = useRef<HTMLElement | null>(null);
+  const previewRef = useRef<HTMLElement | null>(null);
+  const bulkActionsRef = useRef<HTMLElement | null>(null);
 
   const visibleSections = useMemo(
     () =>
@@ -183,6 +188,7 @@ function App() {
   const selectedCases = selectedItems.filter((item) => item.item_type === 'case');
 
   const mergeSummary = useMemo(() => buildMergeSummary(selectedItems, items, destinationCaseId), [destinationCaseId, items, selectedItems]);
+  const canConsolidateSelection = selectedItems.length >= 2;
 
   useEffect(() => {
     const state = new URLSearchParams(window.location.search).get('state');
@@ -222,6 +228,8 @@ function App() {
     toolbarRef.current = document.querySelector('#queue-toolbar') as HTMLElement | null;
     listRef.current = document.querySelector('#queue-list') as HTMLElement | null;
     paginationRef.current = document.querySelector('#queue-pagination') as HTMLElement | null;
+    previewRef.current = document.querySelector('#preview-drawer') as HTMLElement | null;
+    bulkActionsRef.current = document.querySelector('#bulk-actions') as HTMLElement | null;
   });
 
   const addToast = (kind: ToastMessage['kind'], title: string, subtitle: string) => {
@@ -246,6 +254,7 @@ function App() {
 
   const handleOpenFilter = (filterId: string, pinned: boolean) => {
     setActiveFilterId(filterId);
+    setActiveFilterPinned(pinned);
     if (pinned) {
       setFilterModeActive(true);
     }
@@ -364,19 +373,30 @@ function App() {
 
   useKeyboardShortcuts({
     isFilterModeActive: filterModeActive,
+    onToggleShortcutOverlays: () => setShowShortcutOverlays((current) => !current),
     onFocusQueueSearch: () => {
       queueSearchRef.current?.focus();
+    },
+    onFocusFilterSearch: () => {
+      filterSearchRef.current?.focus();
     },
     onOpenShortcutGuide: () => setShortcutGuideOpen(true),
     onFocusFilters: () => {
       setFilterModeActive(true);
       setFocusedFilterIndex(0);
-      filterSearchRef.current?.focus();
+      setActiveFilterPinned(true);
+      setActiveFilterId(null);
+      document.querySelector<HTMLElement>('#filters-panel')?.focus();
     },
-    onFocusToolbar: () => toolbarRef.current?.scrollIntoView({ block: 'center' }),
-    onFocusList: () => listRef.current?.scrollIntoView({ block: 'center' }),
-    onFocusPagination: () => paginationRef.current?.scrollIntoView({ block: 'center' }),
+    onFocusToolbar: () => toolbarRef.current?.focus(),
+    onFocusList: () => listRef.current?.focus(),
+    onFocusPagination: () => paginationRef.current?.focus(),
+    onFocusPreview: () => previewRef.current?.focus(),
+    onFocusBulkActions: () => bulkActionsRef.current?.focus(),
     onEscape: () => {
+      const activeElement = document.activeElement as HTMLElement | null;
+      const isQueueSearchActive = Boolean(activeElement?.closest('.cg-toolbar .cds--search'));
+      const isFilterSearchActive = Boolean(activeElement?.closest('.cg-filter-panel__header .cds--search'));
       if (columnsOpen) setColumnsOpen(false);
       else if (mergeOpen) setMergeOpen(false);
       else if (assignModalOpen) setAssignModalOpen(false);
@@ -384,9 +404,24 @@ function App() {
       else if (addTagModalOpen) setAddTagModalOpen(false);
       else if (investigationInfoOpen) setInvestigationInfoOpen(false);
       else if (shortcutGuideOpen) setShortcutGuideOpen(false);
-      else if (activeFilterId) setActiveFilterId(null);
-      else if (previewItemId) setPreviewItemId(null);
-      setFilterModeActive(false);
+      else if (isQueueSearchActive) {
+        (activeElement as HTMLElement | null)?.blur();
+        queueSearchRef.current?.blur();
+      } else if (isFilterSearchActive) {
+        (activeElement as HTMLElement | null)?.blur();
+        filterSearchRef.current?.blur();
+        setFilterModeActive(true);
+        setFocusedFilterIndex(0);
+        setActiveFilterId(null);
+        setActiveFilterPinned(false);
+        document.querySelector<HTMLElement>('#filters-panel')?.focus();
+      } else if (activeFilterId) {
+        setActiveFilterId(null);
+        setActiveFilterPinned(false);
+      } else if (filterModeActive) {
+        setFilterModeActive(false);
+        setActiveFilterPinned(false);
+      } else if (previewItemId) setPreviewItemId(null);
     },
     onFilterModeKey: (key, event) => {
       if (!filterModeActive) {
@@ -414,10 +449,17 @@ function App() {
         }
         return true;
       }
+      if (key === 'ArrowLeft' && activeFilter) {
+        event.preventDefault();
+        setActiveFilterId(null);
+        setActiveFilterPinned(false);
+        return true;
+      }
       if (key === 'Enter') {
         event.preventDefault();
         if (visibleFilter) {
           setActiveFilterId(visibleFilter.id);
+          setActiveFilterPinned(true);
         }
         return true;
       }
@@ -434,6 +476,7 @@ function App() {
         event.preventDefault();
         setFocusedFilterIndex(shortcutMatchIndex);
         setActiveFilterId(visibleFilters[shortcutMatchIndex]?.id ?? null);
+        setActiveFilterPinned(true);
         return true;
       }
 
@@ -486,11 +529,16 @@ function App() {
                 onSearchChange={setFilterSearch}
                 selectedFilters={selectedFilters}
                 activeFilterId={activeFilterId}
+                activeFilterPinned={activeFilterPinned}
                 filterModeActive={filterModeActive}
                 focusedFilterId={visibleFilters[focusedFilterIndex]?.id ?? null}
                 focusedValueIndex={focusedValueIndex}
                 onOpenFilter={handleOpenFilter}
-                onCloseFilter={() => setActiveFilterId(null)}
+                onCloseFilter={() => {
+                  setActiveFilterId(null);
+                  setActiveFilterPinned(false);
+                }}
+                onHoverExit={() => setActiveFilterId(null)}
                 onToggleValue={handleToggleFilterValue}
                 onRemoveValue={(filterId, value) => handleToggleFilterValue(filterId, value)}
                 onClearAll={() => setSelectedFilters({})}
@@ -503,6 +551,15 @@ function App() {
                     <Tag type="blue">{selectedIds.length} selected</Tag>
                   ) : null}
                 </div>
+                {showShortcutOverlays ? (
+                  <div className="cg-shortcut-overlays">
+                    <span className="cg-overlay-hint cg-overlay-hint--toolbar">Shift+S Search</span>
+                    <span className="cg-overlay-hint cg-overlay-hint--list">Shift+L List</span>
+                    <span className="cg-overlay-hint cg-overlay-hint--pagination">G then P</span>
+                    {previewItem ? <span className="cg-overlay-hint cg-overlay-hint--preview">Shift+P Preview</span> : null}
+                    {selectedIds.length > 0 ? <span className="cg-overlay-hint cg-overlay-hint--bulk">Shift+B Bulk</span> : null}
+                  </div>
+                ) : null}
                 <WorkQueueTable
                   items={pagedItems}
                   columns={columns}
@@ -519,14 +576,17 @@ function App() {
                   onOpenPreview={setPreviewItemId}
                 />
                 {selectedIds.length > 0 ? (
-                  <BulkActionBar
-                    selectedCount={selectedIds.length}
-                    onAssign={() => setAssignModalOpen(true)}
-                    onStatus={() => setStatusModalOpen(true)}
-                    onConsolidate={() => setMergeOpen(true)}
-                    onAddTag={() => setAddTagModalOpen(true)}
-                    onClear={() => setSelectedIds([])}
-                  />
+                  <div id="bulk-actions">
+                    <BulkActionBar
+                      selectedCount={selectedIds.length}
+                      canConsolidate={canConsolidateSelection}
+                      onAssign={() => setAssignModalOpen(true)}
+                      onStatus={() => setStatusModalOpen(true)}
+                      onConsolidate={() => setMergeOpen(true)}
+                      onAddTag={() => setAddTagModalOpen(true)}
+                      onClear={() => setSelectedIds([])}
+                    />
+                  </div>
                 ) : null}
                 <QueuePagination
                   totalItems={sortedItems.length}
@@ -541,23 +601,25 @@ function App() {
               </section>
             </div>
             {previewItem ? (
-              <PreviewDrawer
-                item={previewItem}
-                onClose={() => setPreviewItemId(null)}
-                onAssignToMe={() => {
-                  setItems((current) =>
-                    current.map((item) =>
-                      item.id === previewItem.id ? { ...item, assignee: CURRENT_ANALYST } : item,
-                    ),
-                  );
-                  addToast('success', 'Assigned to you', `${previewItem.id} is now assigned to ${CURRENT_ANALYST}.`);
-                }}
-                onOpenInvestigation={() => setInvestigationInfoOpen(true)}
-                onMoreActions={() => {
-                  setSelectedIds([previewItem.id]);
-                  setStatusModalOpen(true);
-                }}
-              />
+              <div id="preview-drawer">
+                <PreviewDrawer
+                  item={previewItem}
+                  onClose={() => setPreviewItemId(null)}
+                  onAssignToMe={() => {
+                    setItems((current) =>
+                      current.map((item) =>
+                        item.id === previewItem.id ? { ...item, assignee: CURRENT_ANALYST } : item,
+                      ),
+                    );
+                    addToast('success', 'Assigned to you', `${previewItem.id} is now assigned to ${CURRENT_ANALYST}.`);
+                  }}
+                  onOpenInvestigation={() => setInvestigationInfoOpen(true)}
+                  onMoreActions={() => {
+                    setSelectedIds([previewItem.id]);
+                    setStatusModalOpen(true);
+                  }}
+                />
+              </div>
             ) : null}
           </>
         ) : null}
@@ -595,6 +657,7 @@ function App() {
       <SelectionModal
         open={assignModalOpen}
         title="Assign items"
+        variant="combobox"
         items={assignOptions}
         selectedItem={pendingAssignee}
         onSelect={setPendingAssignee}
@@ -605,6 +668,7 @@ function App() {
       <SelectionModal
         open={statusModalOpen}
         title="Change status"
+        variant="dropdown"
         items={statusOptions}
         selectedItem={pendingStatus}
         onSelect={setPendingStatus}
@@ -615,6 +679,7 @@ function App() {
       <SelectionModal
         open={addTagModalOpen}
         title="Add tag"
+        variant="dropdown"
         items={['Needs review', 'Data exfiltration', 'Public exposure', 'AI usage', 'False-positive candidate']}
         selectedItem={pendingTag}
         onSelect={setPendingTag}
@@ -652,6 +717,7 @@ function App() {
 function SelectionModal({
   open,
   title,
+  variant,
   items,
   selectedItem,
   onSelect,
@@ -660,6 +726,7 @@ function SelectionModal({
 }: {
   open: boolean;
   title: string;
+  variant: 'combobox' | 'dropdown';
   items: string[];
   selectedItem: string;
   onSelect: (value: string) => void;
@@ -675,19 +742,37 @@ function SelectionModal({
       onRequestClose={onClose}
       onRequestSubmit={onSubmit}
     >
-      <Dropdown
-        id={title.toLowerCase().replaceAll(' ', '-')}
-        titleText=""
-        label="Choose an option"
-        items={items.map((entry) => ({ id: entry, label: entry }))}
-        selectedItem={{ id: selectedItem, label: selectedItem }}
-        itemToString={(item) => item?.label ?? ''}
-        onChange={({ selectedItem: next }) => {
-          if (next) {
-            onSelect(next.label);
-          }
-        }}
-      />
+      <div className="cg-selection-modal">
+        {variant === 'combobox' ? (
+          <ComboBox
+            id={title.toLowerCase().replaceAll(' ', '-')}
+            titleText=""
+            placeholder="Search or select a user"
+            items={items.map((entry) => ({ id: entry, label: entry }))}
+            selectedItem={{ id: selectedItem, label: selectedItem }}
+            itemToString={(item) => item?.label ?? ''}
+            onChange={({ selectedItem: next }) => {
+              if (next) {
+                onSelect(next.label);
+              }
+            }}
+          />
+        ) : (
+          <Dropdown
+            id={title.toLowerCase().replaceAll(' ', '-')}
+            titleText=""
+            label="Choose an option"
+            items={items.map((entry) => ({ id: entry, label: entry }))}
+            selectedItem={{ id: selectedItem, label: selectedItem }}
+            itemToString={(item) => item?.label ?? ''}
+            onChange={({ selectedItem: next }) => {
+              if (next) {
+                onSelect(next.label);
+              }
+            }}
+          />
+        )}
+      </div>
     </Modal>
   );
 }

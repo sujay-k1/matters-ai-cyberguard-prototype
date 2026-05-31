@@ -34,7 +34,7 @@ export function QueueToolbar({
   onOpenColumns,
 }: QueueToolbarProps) {
   return (
-    <section className="cg-toolbar" id="queue-toolbar">
+    <section className="cg-toolbar" id="queue-toolbar" tabIndex={-1}>
       <div className="cg-toolbar-left">
         <div className="cg-segmented-control" role="tablist" aria-label="Queue segments">
           {(['All', 'Cases', 'Alerts'] as QueueSegment[]).map((entry) => (
@@ -51,7 +51,7 @@ export function QueueToolbar({
         <Search
           id="queue-search"
           labelText="Search cases, alerts, users, or resources"
-          placeholder="Search cases, alerts, users, or resources"
+          placeholder="Search cases, alerts, users, or resources (/)"
           size="md"
           value={searchValue}
           onChange={(event) => onSearchChange(event.target.value)}

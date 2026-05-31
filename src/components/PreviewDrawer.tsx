@@ -20,16 +20,21 @@ export function PreviewDrawer({
   const preview = item.preview;
 
   return (
-    <aside className="cg-preview-drawer" aria-label="Item preview">
+    <aside className="cg-preview-drawer" aria-label="Item preview" tabIndex={-1}>
       <header>
+        <button
+          type="button"
+          className="cg-icon-action cg-preview-close"
+          onClick={onClose}
+          aria-label="Close preview"
+        >
+          <Close size={16} />
+        </button>
         <div>
           <p className="cg-eyebrow">{preview.identity_and_urgency.type}</p>
           <h2>{preview.identity_and_urgency.id}</h2>
           <p>{preview.identity_and_urgency.title}</p>
         </div>
-        <button type="button" className="cg-icon-action" onClick={onClose} aria-label="Close preview">
-          <Close size={16} />
-        </button>
       </header>
 
       <section className="cg-preview-meta">
