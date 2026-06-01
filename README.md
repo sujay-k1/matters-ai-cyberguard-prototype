@@ -20,6 +20,26 @@ npm run dev
 npm run build
 ```
 
+## Public GitHub Pages prototype
+
+https://sujay-k1.github.io/matters-ai-cyberguard-prototype/
+
+Example review links:
+
+- Overview: https://sujay-k1.github.io/matters-ai-cyberguard-prototype/?state=overview
+- Work Queue preview: https://sujay-k1.github.io/matters-ai-cyberguard-prototype/?state=preview
+- Investigation: https://sujay-k1.github.io/matters-ai-cyberguard-prototype/?state=investigation
+- Actions: https://sujay-k1.github.io/matters-ai-cyberguard-prototype/?state=investigation-actions
+- Resolve with exception: https://sujay-k1.github.io/matters-ai-cyberguard-prototype/?state=resolve-exception
+- Operational-state gallery example: https://sujay-k1.github.io/matters-ai-cyberguard-prototype/?state=queue-loading
+
+Notes:
+
+- Hosted as a static Vite app on GitHub Pages
+- Interactions run locally in the browser
+- Local state resets on refresh
+- External integrations remain simulated
+
 ## Interaction summary
 
 - Carbon-style global header with Overview, Work Queue, and Activity Log tabs
