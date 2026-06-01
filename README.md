@@ -69,11 +69,17 @@ npm run build
 - `/?state=classification`
 - `/?state=handoff`
 - `/?state=raw-evidence`
+- `/?state=evidence-detail`
+- `/?state=evidence-raw-json`
 - `/?state=hunt-results`
 - `/?state=timeline-detached`
 - `/?state=alert-detail`
+- `/?state=entity-activity`
 - `/?state=entity-baseline`
 - `/?state=move-alert`
+- `/?state=action-in-progress`
+- `/?state=action-completed`
+- `/?state=reopen-item`
 - `/?state=module-activity-log`
 - `/?state=overview`
 - `/?state=filter-open`

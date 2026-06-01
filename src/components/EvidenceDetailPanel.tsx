@@ -1,11 +1,12 @@
 import { Button, Tag } from '@carbon/react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { EvidenceItem } from '../types/investigation';
 import { InvestigationDetailDialog } from './InvestigationDetailDialog';
 import { ProvenanceLabel } from './ProvenanceLabel';
 
 interface EvidenceDetailPanelProps {
   evidence: EvidenceItem | null;
+  initialShowRaw?: boolean;
   onClose: () => void;
   onToggleVerdict: () => void;
   onToggleAttached: () => void;
@@ -17,6 +18,7 @@ interface EvidenceDetailPanelProps {
 
 export function EvidenceDetailPanel({
   evidence,
+  initialShowRaw = false,
   onClose,
   onToggleVerdict,
   onToggleAttached,
@@ -25,9 +27,13 @@ export function EvidenceDetailPanel({
   onOpenRelatedAlert,
   onOpenSourceSystem,
 }: EvidenceDetailPanelProps) {
-  const [showRaw, setShowRaw] = useState(false);
+  const [showRaw, setShowRaw] = useState(initialShowRaw);
   const open = Boolean(evidence);
   if (!evidence) return null;
+
+  useEffect(() => {
+    setShowRaw(initialShowRaw);
+  }, [evidence.id, initialShowRaw]);
 
   return (
     <InvestigationDetailDialog

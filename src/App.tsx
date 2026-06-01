@@ -501,6 +501,45 @@ function App() {
       setInvestigationItemId(cloudCase?.id ?? null);
       setActiveInvestigationTab('summary');
       setInvestigationInfoOpen(true);
+    } else if (state === 'alert-detail' || state === 'evidence-detail' || state === 'evidence-raw-json' || state === 'entity-activity' || state === 'entity-baseline' || state === 'move-alert' || state === 'timeline-detached') {
+      const heroCase = items.find((item) => item.id === 'CASE-3001') ?? items.find((item) => item.item_type === 'case') ?? items[0];
+      if (heroCase) ensureWorkspaceState(heroCase);
+      setActiveTab('Work Queue');
+      setPreviewItemId(heroCase?.id ?? null);
+      setInvestigationItemId(heroCase?.id ?? null);
+      setActiveInvestigationTab(
+        state === 'alert-detail' || state === 'evidence-detail' || state === 'evidence-raw-json' || state === 'move-alert'
+          ? 'evidence'
+          : state === 'entity-activity' || state === 'entity-baseline'
+            ? 'entities'
+            : 'timeline',
+      );
+      setInvestigationInfoOpen(true);
+      if (heroCase) {
+        updateWorkspaceState(heroCase, (current) => ({
+          ...current,
+          selectedAlertId:
+            state === 'alert-detail' || state === 'move-alert'
+              ? current.alerts[0]?.id ?? null
+              : current.selectedAlertId,
+          selectedEvidenceId:
+            state === 'evidence-detail' || state === 'evidence-raw-json'
+              ? current.evidence.find((entry) => entry.rawRecordAvailable)?.id ?? current.evidence[0]?.id ?? null
+              : current.selectedEvidenceId,
+          selectedEntityId:
+            state === 'entity-activity' || state === 'entity-baseline'
+              ? current.entities[0]?.id ?? null
+              : current.selectedEntityId,
+          timeline:
+            state === 'timeline-detached'
+              ? current.timeline.map((entry, index) => (index === 0 ? { ...entry, attached: false } : entry))
+              : current.timeline,
+          evidence:
+            state === 'timeline-detached'
+              ? current.evidence.map((entry, index) => (index === 0 ? { ...entry, attached: false } : entry))
+              : current.evidence,
+        }));
+      }
     } else if (state === 'response-action' || state === 'pending-approval' || state === 'failed-action' || state === 'resolve-case' || state === 'resolve-exception' || state === 'handoff' || state === 'raw-evidence' || state === 'hunt-results' || state === 'ai-provenance-investigation' || state === 'system-derived-containment') {
       const heroCase = items.find((item) => item.id === 'CASE-3001') ?? items.find((item) => item.item_type === 'case') ?? items[0];
       if (heroCase) ensureWorkspaceState(heroCase);
@@ -537,6 +576,51 @@ function App() {
           selectedEvidenceId: current.evidence[0]?.id ?? null,
         }));
       }
+    } else if (state === 'action-in-progress' || state === 'action-completed') {
+      const cloudCase = items.find((item) => item.id === 'CASE-3002') ?? items.find((item) => item.item_type === 'case') ?? items[0];
+      if (cloudCase) ensureWorkspaceState(cloudCase);
+      setActiveTab('Work Queue');
+      setPreviewItemId(cloudCase?.id ?? null);
+      setInvestigationItemId(cloudCase?.id ?? null);
+      setActiveInvestigationTab('actions');
+      setInvestigationInfoOpen(true);
+      if (cloudCase) {
+        updateWorkspaceState(cloudCase, (current) => ({
+          ...current,
+          actions: current.actions.map((entry) =>
+            entry.title === 'Review repository sharing scope'
+              ? {
+                  ...entry,
+                  currentState: state === 'action-in-progress' ? 'In progress' : 'Completed',
+                  auditTimestamp: 'Just now',
+                }
+              : entry,
+          ),
+          selectedActionId:
+            current.actions.find((entry) => entry.title === 'Review repository sharing scope')?.id ?? current.actions[0]?.id ?? null,
+        }), { logContainmentChange: true });
+      }
+    } else if (state === 'reopen-item') {
+      const representativeCase = items.find((item) => item.id === 'CASE-3002') ?? items.find((item) => item.item_type === 'case') ?? items[0];
+      if (representativeCase) {
+        updateItem(representativeCase.id, (entry) => ({
+          ...entry,
+          status: 'Resolved',
+          preview: {
+            ...entry.preview,
+            identity_and_urgency: {
+              ...entry.preview.identity_and_urgency,
+              status: 'Resolved',
+            },
+          },
+        }));
+      }
+      setActiveTab('Work Queue');
+      setPreviewItemId(representativeCase?.id ?? null);
+      setReopenStatus('Investigating');
+      setReopenComment('');
+      setReopenCommentProvenance(undefined);
+      setReopenModalOpen(true);
     } else if (state === 'ai-provenance-preview') {
       const heroCase = items.find((item) => item.id === 'CASE-3001') ?? items.find((item) => item.item_type === 'case') ?? items[0];
       setActiveTab('Work Queue');
@@ -1671,6 +1755,9 @@ function App() {
           huntNoResults={huntState?.status === 'no-results'}
           approvalSubmitError={submissionScenario === 'approval-submit-error'}
           autoOpenSourceSystemModal={Boolean(demoUI.sourceSystemScenario)}
+          initialEntityMode={demoUI.state === 'entity-activity' ? 'activity' : demoUI.state === 'entity-baseline' || demoUI.state === 'system-derived-baseline' ? 'baseline' : 'overview'}
+          initialShowRawEvidence={demoUI.state === 'evidence-raw-json'}
+          autoOpenMoveAlertModal={demoUI.state === 'move-alert'}
           sourceSystemScenario={demoUI.sourceSystemScenario ?? 'source-system-info'}
           onClose={() => setInvestigationInfoOpen(false)}
           onTabChange={setActiveInvestigationTab}

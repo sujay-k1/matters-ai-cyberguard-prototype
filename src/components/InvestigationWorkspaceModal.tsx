@@ -97,6 +97,9 @@ interface InvestigationWorkspaceModalProps {
   huntNoResults?: boolean;
   approvalSubmitError?: boolean;
   autoOpenSourceSystemModal?: boolean;
+  initialEntityMode?: 'overview' | 'activity' | 'baseline';
+  initialShowRawEvidence?: boolean;
+  autoOpenMoveAlertModal?: boolean;
   sourceSystemScenario?: Extract<DemoUIState, 'source-system-info' | 'source-system-error' | 'source-system-permission-denied' | 'source-system-record-unavailable' | 'source-system-timeout'>;
 }
 
@@ -154,6 +157,9 @@ export function InvestigationWorkspaceModal({
   huntNoResults = false,
   approvalSubmitError = false,
   autoOpenSourceSystemModal = false,
+  initialEntityMode = 'overview',
+  initialShowRawEvidence = false,
+  autoOpenMoveAlertModal = false,
   sourceSystemScenario = 'source-system-info',
 }: InvestigationWorkspaceModalProps) {
   const context = useMemo(() => buildInvestigationContext(item), [item]);
@@ -249,6 +255,10 @@ export function InvestigationWorkspaceModal({
   }, [approvalSubmitError, workspace.selectedActionId]);
 
   useEffect(() => {
+    setSelectedEntityMode(initialEntityMode);
+  }, [initialEntityMode, item.id]);
+
+  useEffect(() => {
     if (autoOpenSourceSystemModal && !sourceSystemTarget) {
       const candidate = workspace.evidence[0];
       setSourceSystemTarget({
@@ -257,6 +267,12 @@ export function InvestigationWorkspaceModal({
       });
     }
   }, [autoOpenSourceSystemModal, item.detection_source, item.id, sourceSystemTarget, workspace.evidence]);
+
+  useEffect(() => {
+    if (autoOpenMoveAlertModal && workspace.selectedAlertId) {
+      setMoveAlertModalOpen(true);
+    }
+  }, [autoOpenMoveAlertModal, workspace.selectedAlertId]);
 
   useEffect(() => {
     const container = panelsScrollRef.current;
@@ -952,6 +968,7 @@ export function InvestigationWorkspaceModal({
               {selectedEvidence ? (
                 <EvidenceDetailPanel
                   evidence={selectedEvidence}
+                  initialShowRaw={initialShowRawEvidence}
                   onClose={() => patchWorkspace((current) => ({ ...current, selectedEvidenceId: null }))}
                   onToggleVerdict={() =>
                     updateEvidenceVerdict(
