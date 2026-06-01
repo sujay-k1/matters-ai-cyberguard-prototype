@@ -429,7 +429,7 @@ function App() {
       setColumnsOpen(true);
     } else if (state === 'shortcut-guide') {
       setShortcutGuideOpen(true);
-    } else if (state === 'investigation-loading' || state === 'investigation-error' || state === 'investigation-partial' || state === 'summary-ai-loading' || state === 'summary-ai-error' || state === 'summary-empty-tasks' || state === 'timeline-loading' || state === 'timeline-empty' || state === 'timeline-no-results' || state === 'timeline-error' || state === 'evidence-loading' || state === 'evidence-empty' || state === 'evidence-error' || state === 'entities-loading' || state === 'entities-empty' || state === 'baseline-error' || state === 'actions-loading' || state === 'actions-empty' || state === 'containment-error' || state === 'activity-empty' || state === 'activity-no-results' || state === 'activity-error' || state === 'hunt-loading' || state === 'hunt-empty' || state === 'hunt-no-results' || state === 'hunt-error' || state === 'source-system-info' || state === 'source-system-error' || state === 'source-system-permission-denied' || state === 'source-system-record-unavailable' || state === 'source-system-timeout' || state === 'approval-submit-error') {
+    } else if (state === 'investigation-loading' || state === 'investigation-error' || state === 'investigation-partial' || state === 'summary-ai-loading' || state === 'summary-ai-error' || state === 'summary-empty-tasks' || state === 'timeline-loading' || state === 'timeline-empty' || state === 'timeline-no-results' || state === 'timeline-error' || state === 'evidence-loading' || state === 'evidence-empty' || state === 'evidence-error' || state === 'entities-loading' || state === 'entities-empty' || state === 'baseline-error' || state === 'actions-loading' || state === 'actions-empty' || state === 'containment-error' || state === 'activity-empty' || state === 'activity-no-results' || state === 'activity-error' || state === 'hunt-loading' || state === 'hunt-empty' || state === 'hunt-no-results' || state === 'hunt-error' || state === 'source-system-info' || state === 'source-system-error' || state === 'source-system-permission-denied' || state === 'source-system-record-unavailable' || state === 'source-system-timeout' || state === 'approval-submit-error' || state === 'escalation-submit-error' || state === 'resolution-submit-error') {
       const heroCase = items.find((item) => item.id === 'CASE-3001') ?? items.find((item) => item.item_type === 'case') ?? items[0];
       if (heroCase) ensureWorkspaceState(heroCase);
       setPreviewItemId(heroCase?.id ?? null);
@@ -448,6 +448,12 @@ function App() {
           ...current,
           selectedActionId: current.actions.find((entry) => entry.currentState === 'Recommended' && entry.requiresApproval)?.id ?? current.actions[0]?.id ?? null,
         }));
+      }
+      if (state === 'escalation-submit-error') {
+        setEscalateModalOpen(true);
+      }
+      if (state === 'resolution-submit-error') {
+        setResolveModalOpen(true);
       }
       if (state.startsWith('hunt-')) {
         updateWorkspaceState(heroCase!, (current) => ({ ...current, selectedEntityId: current.entities[0]?.id ?? null }));
@@ -501,7 +507,7 @@ function App() {
       setInvestigationItemId(cloudCase?.id ?? null);
       setActiveInvestigationTab('summary');
       setInvestigationInfoOpen(true);
-    } else if (state === 'alert-detail' || state === 'evidence-detail' || state === 'evidence-raw-json' || state === 'entity-activity' || state === 'entity-baseline' || state === 'move-alert' || state === 'timeline-detached') {
+    } else if (state === 'alert-detail' || state === 'evidence-detail' || state === 'evidence-raw-json' || state === 'entity-detail' || state === 'entity-activity' || state === 'entity-baseline' || state === 'move-alert' || state === 'timeline-detached' || state === 'timeline-event-detached') {
       const heroCase = items.find((item) => item.id === 'CASE-3001') ?? items.find((item) => item.item_type === 'case') ?? items[0];
       if (heroCase) ensureWorkspaceState(heroCase);
       setActiveTab('Work Queue');
@@ -510,7 +516,7 @@ function App() {
       setActiveInvestigationTab(
         state === 'alert-detail' || state === 'evidence-detail' || state === 'evidence-raw-json' || state === 'move-alert'
           ? 'evidence'
-          : state === 'entity-activity' || state === 'entity-baseline'
+          : state === 'entity-detail' || state === 'entity-activity' || state === 'entity-baseline'
             ? 'entities'
             : 'timeline',
       );
@@ -527,20 +533,20 @@ function App() {
               ? current.evidence.find((entry) => entry.rawRecordAvailable)?.id ?? current.evidence[0]?.id ?? null
               : current.selectedEvidenceId,
           selectedEntityId:
-            state === 'entity-activity' || state === 'entity-baseline'
+            state === 'entity-detail' || state === 'entity-activity' || state === 'entity-baseline'
               ? current.entities[0]?.id ?? null
               : current.selectedEntityId,
           timeline:
-            state === 'timeline-detached'
+            state === 'timeline-detached' || state === 'timeline-event-detached'
               ? current.timeline.map((entry, index) => (index === 0 ? { ...entry, attached: false } : entry))
               : current.timeline,
           evidence:
-            state === 'timeline-detached'
+            state === 'timeline-detached' || state === 'timeline-event-detached'
               ? current.evidence.map((entry, index) => (index === 0 ? { ...entry, attached: false } : entry))
               : current.evidence,
         }));
       }
-    } else if (state === 'response-action' || state === 'pending-approval' || state === 'failed-action' || state === 'resolve-case' || state === 'resolve-exception' || state === 'handoff' || state === 'raw-evidence' || state === 'hunt-results' || state === 'ai-provenance-investigation' || state === 'system-derived-containment') {
+    } else if (state === 'response-action' || state === 'pending-approval' || state === 'failed-action' || state === 'resolve-case' || state === 'resolve-exception' || state === 'handoff' || state === 'raw-evidence' || state === 'hunt-results' || state === 'hunt-results-selected' || state === 'ai-provenance-investigation' || state === 'system-derived-containment') {
       const heroCase = items.find((item) => item.id === 'CASE-3001') ?? items.find((item) => item.item_type === 'case') ?? items[0];
       if (heroCase) ensureWorkspaceState(heroCase);
       setActiveTab('Work Queue');
@@ -548,6 +554,8 @@ function App() {
       setInvestigationItemId(heroCase?.id ?? null);
       setActiveInvestigationTab(
         state === 'raw-evidence' ? 'timeline'
+          : state === 'hunt-results' || state === 'hunt-results-selected'
+            ? 'entities'
           : state === 'response-action' || state === 'pending-approval' || state === 'failed-action' || state === 'system-derived-containment'
             ? 'actions'
             : 'summary',
@@ -574,6 +582,12 @@ function App() {
         updateWorkspaceState(heroCase, (current) => ({
           ...current,
           selectedEvidenceId: current.evidence[0]?.id ?? null,
+        }));
+      }
+      if ((state === 'hunt-results' || state === 'hunt-results-selected') && heroCase) {
+        updateWorkspaceState(heroCase, (current) => ({
+          ...current,
+          selectedEntityId: current.entities[0]?.id ?? null,
         }));
       }
     } else if (state === 'action-in-progress' || state === 'action-completed') {
@@ -1758,6 +1772,12 @@ function App() {
           initialEntityMode={demoUI.state === 'entity-activity' ? 'activity' : demoUI.state === 'entity-baseline' || demoUI.state === 'system-derived-baseline' ? 'baseline' : 'overview'}
           initialShowRawEvidence={demoUI.state === 'evidence-raw-json'}
           autoOpenMoveAlertModal={demoUI.state === 'move-alert'}
+          autoOpenHuntModal={demoUI.state === 'hunt-results' || demoUI.state === 'hunt-results-selected'}
+          initialSelectedHuntIds={
+            demoUI.state === 'hunt-results-selected'
+              ? (investigationItem ? getOrCreateWorkspace(investigationItem).huntResults.slice(0, 2).map((entry) => entry.id) : [])
+              : []
+          }
           sourceSystemScenario={demoUI.sourceSystemScenario ?? 'source-system-info'}
           onClose={() => setInvestigationInfoOpen(false)}
           onTabChange={setActiveInvestigationTab}

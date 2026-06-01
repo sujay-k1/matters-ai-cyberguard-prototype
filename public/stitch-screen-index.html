@@ -1,0 +1,533 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CyberGuard Stitch Capture Index</title>
+    <style>
+      :root {
+        color-scheme: light;
+        font-family: "IBM Plex Sans", Arial, sans-serif;
+        line-height: 1.45;
+        --text: #161616;
+        --muted: #525252;
+        --border: #d9d9d9;
+        --surface: #ffffff;
+        --surface-subtle: #f4f4f4;
+        --link: #0f62fe;
+        --success: #198038;
+        --warning: #8a3ffc;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        color: var(--text);
+        background: var(--surface-subtle);
+      }
+
+      main {
+        max-width: 1500px;
+        margin: 0 auto;
+        padding: 2rem 1.5rem 3rem;
+      }
+
+      h1,
+      h2,
+      h3,
+      p {
+        margin: 0;
+      }
+
+      a {
+        color: var(--link);
+      }
+
+      .hero,
+      .controls,
+      .section {
+        border: 1px solid var(--border);
+        background: var(--surface);
+      }
+
+      .hero,
+      .controls {
+        padding: 1.25rem;
+      }
+
+      .hero {
+        display: grid;
+        gap: 0.75rem;
+        margin-bottom: 1rem;
+      }
+
+      .hero p,
+      .hint,
+      .route,
+      .meta,
+      .empty-state {
+        color: var(--muted);
+      }
+
+      .controls {
+        display: grid;
+        gap: 1rem;
+        margin-bottom: 1rem;
+      }
+
+      .controls-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        align-items: center;
+      }
+
+      .controls input[type="search"] {
+        width: min(32rem, 100%);
+        padding: 0.75rem 0.875rem;
+        border: 1px solid var(--border);
+        font: inherit;
+        background: var(--surface);
+      }
+
+      .filters {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+      }
+
+      .filter-button,
+      .action-button,
+      .copy-button {
+        appearance: none;
+        border: 1px solid var(--border);
+        background: var(--surface);
+        color: var(--text);
+        cursor: pointer;
+        font: inherit;
+      }
+
+      .filter-button {
+        padding: 0.45rem 0.75rem;
+      }
+
+      .filter-button.is-active {
+        border-color: var(--link);
+        color: var(--link);
+      }
+
+      .section {
+        margin-top: 1rem;
+      }
+
+      .section-header {
+        display: flex;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 1rem 1.25rem;
+        border-bottom: 1px solid var(--border);
+        background: var(--surface-subtle);
+      }
+
+      .section-body {
+        overflow-x: auto;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 1320px;
+      }
+
+      th,
+      td {
+        padding: 0.75rem 0.875rem;
+        border-bottom: 1px solid var(--border);
+        vertical-align: top;
+        text-align: left;
+        font-size: 0.9375rem;
+      }
+
+      th {
+        background: var(--surface-subtle);
+        font-weight: 600;
+        white-space: nowrap;
+      }
+
+      td.order {
+        white-space: nowrap;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .frame-name {
+        font-weight: 600;
+      }
+
+      .tag {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.125rem 0.5rem;
+        border-radius: 999px;
+        font-size: 0.8125rem;
+        border: 1px solid var(--border);
+        white-space: nowrap;
+      }
+
+      .tag.core {
+        border-color: #0f62fe;
+        color: #0f62fe;
+      }
+
+      .tag.supporting {
+        border-color: #6f6f6f;
+        color: #525252;
+      }
+
+      .tag.gallery {
+        border-color: var(--warning);
+        color: var(--warning);
+      }
+
+      .tag.overlay-yes {
+        border-color: #198038;
+        color: #198038;
+      }
+
+      .tag.overlay-no {
+        border-color: #8d8d8d;
+        color: #525252;
+      }
+
+      .action-stack {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+      }
+
+      .action-button,
+      .copy-button {
+        padding: 0.45rem 0.75rem;
+        white-space: nowrap;
+      }
+
+      .action-button.primary {
+        border-color: var(--link);
+        color: var(--link);
+        text-decoration: none;
+      }
+
+      .copy-button {
+        background: var(--surface-subtle);
+      }
+
+      .status-cell {
+        min-width: 10rem;
+      }
+
+      .completed-control {
+        display: flex;
+        gap: 0.5rem;
+        align-items: center;
+      }
+
+      textarea.notes {
+        width: 100%;
+        min-height: 4.75rem;
+        padding: 0.625rem 0.75rem;
+        border: 1px solid var(--border);
+        font: inherit;
+        resize: vertical;
+      }
+
+      .status-text {
+        color: var(--success);
+        font-weight: 600;
+      }
+
+      .empty-state {
+        padding: 1.5rem 1.25rem;
+      }
+
+      .toast {
+        position: fixed;
+        right: 1rem;
+        bottom: 1rem;
+        max-width: 20rem;
+        padding: 0.75rem 0.875rem;
+        border: 1px solid var(--border);
+        background: var(--surface);
+        box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.12);
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section class="hero">
+        <h1>CyberGuard Stitch Capture Index</h1>
+        <p>
+          Public prototype:
+          <a href="https://sujay-k1.github.io/matters-ai-cyberguard-prototype/" target="_blank" rel="noreferrer">
+            https://sujay-k1.github.io/matters-ai-cyberguard-prototype/
+          </a>
+        </p>
+        <p>
+          1. Open the route. 2. Confirm the state renders. 3. Provide the route to Stitch if URL import is available. 4. For maximum fidelity, capture the rendered screen and upload the screenshot as Stitch’s visual reference. 5. Copy the generated editable frame to Figma. 6. Mark the row complete.
+        </p>
+      </section>
+
+      <section class="controls">
+        <div class="controls-row">
+          <label for="screen-search"><strong>Search</strong></label>
+          <input id="screen-search" type="search" placeholder="Search by frame name, route, purpose, or state" />
+        </div>
+        <div class="filters" id="category-filters"></div>
+      </section>
+
+      <div id="screen-sections"></div>
+      <div id="toast-root"></div>
+    </main>
+
+    <script>
+      const PUBLIC_BASE = 'https://sujay-k1.github.io/matters-ai-cyberguard-prototype/';
+      const STORAGE_KEY = 'cyberguard-stitch-index-v1';
+
+      const stateStore = {
+        load() {
+          try {
+            return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+          } catch {
+            return {};
+          }
+        },
+        save(next) {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+        },
+      };
+
+      function getEntryState(store, id) {
+        return store[id] || { completed: false, notes: '' };
+      }
+
+      function setEntryState(store, id, nextValue) {
+        const nextStore = { ...store, [id]: nextValue };
+        stateStore.save(nextStore);
+        return nextStore;
+      }
+
+      function absoluteUrl(relativeUrl) {
+        return new URL(relativeUrl, PUBLIC_BASE).toString();
+      }
+
+      function buildPrompt(entry) {
+        return `Recreate the UI shown at this public reference URL as accurately as possible:\n\n${absoluteUrl(entry.url)}\n\nTreat the rendered browser screen as the visual source of truth.\n\nRequirements:\n- Desktop frame: 1440 × 1024.\n- Preserve the exact information hierarchy.\n- Preserve visible text closely.\n- Preserve the dense enterprise-security layout.\n- Preserve Carbon Design System visual language.\n- Preserve table structure, column order, compact spacing, tags, and secondary metadata.\n- Preserve drawers and modals as overlays above the underlying page.\n- Do not simplify tables into cards.\n- Do not remove secondary metadata.\n- Do not add gradients, illustrations, or consumer-dashboard styling.\n- Do not invent new content.\n- Generate an editable UI frame that can be copied into Figma.\n\nThis frame should be named:\n\n${entry.frameName}\n\nIf the URL cannot be accessed directly, ask me to upload a screenshot of the rendered route and use that screenshot as the visual source of truth.`;
+      }
+
+      async function copyText(value, successMessage) {
+        try {
+          await navigator.clipboard.writeText(value);
+          showToast(successMessage);
+        } catch {
+          window.prompt('Copy this value manually:', value);
+        }
+      }
+
+      function showToast(message) {
+        const root = document.getElementById('toast-root');
+        root.innerHTML = '';
+        const toast = document.createElement('div');
+        toast.className = 'toast';
+        toast.textContent = message;
+        root.appendChild(toast);
+        window.setTimeout(() => {
+          toast.remove();
+        }, 2200);
+      }
+
+      function render(manifest) {
+        const searchInput = document.getElementById('screen-search');
+        const filtersRoot = document.getElementById('category-filters');
+        const sectionsRoot = document.getElementById('screen-sections');
+        let store = stateStore.load();
+        let activeSection = 'All';
+
+        const sections = ['All', ...Array.from(new Set(manifest.map((entry) => entry.section)))];
+
+        function filteredEntries() {
+          const query = searchInput.value.trim().toLowerCase();
+          return manifest.filter((entry) => {
+            const inSection = activeSection === 'All' || entry.section === activeSection;
+            const inSearch =
+              !query ||
+              `${entry.frameName} ${entry.url} ${entry.purpose} ${entry.state || ''} ${entry.section}`
+                .toLowerCase()
+                .includes(query);
+            return inSection && inSearch;
+          });
+        }
+
+        function renderFilters() {
+          filtersRoot.innerHTML = '';
+          sections.forEach((section) => {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = `filter-button${section === activeSection ? ' is-active' : ''}`;
+            button.textContent = section;
+            button.addEventListener('click', () => {
+              activeSection = section;
+              renderFilters();
+              renderSections();
+            });
+            filtersRoot.appendChild(button);
+          });
+        }
+
+        function renderSections() {
+          const entries = filteredEntries();
+          sectionsRoot.innerHTML = '';
+
+          if (!entries.length) {
+            const empty = document.createElement('section');
+            empty.className = 'section';
+            empty.innerHTML = '<div class="empty-state">No screens match the current search or category filter.</div>';
+            sectionsRoot.appendChild(empty);
+            return;
+          }
+
+          const grouped = new Map();
+          entries.forEach((entry) => {
+            if (!grouped.has(entry.section)) grouped.set(entry.section, []);
+            grouped.get(entry.section).push(entry);
+          });
+
+          grouped.forEach((groupEntries, sectionName) => {
+            const completedCount = groupEntries.filter((entry) => getEntryState(store, entry.id).completed).length;
+
+            const section = document.createElement('section');
+            section.className = 'section';
+
+            const header = document.createElement('div');
+            header.className = 'section-header';
+            header.innerHTML = `
+              <div>
+                <h2>${sectionName}</h2>
+                <p class="meta">${groupEntries.length} screens</p>
+              </div>
+              <div class="meta">${completedCount} completed</div>
+            `;
+            section.appendChild(header);
+
+            const body = document.createElement('div');
+            body.className = 'section-body';
+            const table = document.createElement('table');
+            table.innerHTML = `
+              <thead>
+                <tr>
+                  <th>Order</th>
+                  <th>Frame</th>
+                  <th>Route</th>
+                  <th>Overlay</th>
+                  <th>Priority</th>
+                  <th>Treatment</th>
+                  <th>Actions</th>
+                  <th>Status</th>
+                  <th>Notes</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            `;
+            const tbody = table.querySelector('tbody');
+
+            groupEntries.forEach((entry) => {
+              const saved = getEntryState(store, entry.id);
+              const row = document.createElement('tr');
+              row.innerHTML = `
+                <td class="order">${String(entry.order).padStart(2, '0')}</td>
+                <td>
+                  <div class="frame-name">${entry.frameName}</div>
+                  <div class="meta">${entry.purpose}</div>
+                </td>
+                <td>
+                  <div class="route"><code>${entry.url}</code></div>
+                  <div class="meta">${entry.state ? `state=${entry.state}` : 'root route'}</div>
+                </td>
+                <td>
+                  <span class="tag ${entry.overlay ? 'overlay-yes' : 'overlay-no'}">${entry.overlay ? 'Yes' : 'No'}</span>
+                </td>
+                <td>
+                  <span class="tag ${entry.priority === 'Core' ? 'core' : entry.priority === 'Supporting' ? 'supporting' : 'gallery'}">${entry.priority}</span>
+                </td>
+                <td>${entry.stitchTreatment}</td>
+                <td>
+                  <div class="action-stack">
+                    <a class="action-button primary" href="${entry.url}" target="_blank" rel="noreferrer">Open</a>
+                    <button class="copy-button" type="button" data-copy-url="${entry.id}">Copy URL</button>
+                    <button class="copy-button" type="button" data-copy-prompt="${entry.id}">Copy Stitch prompt</button>
+                  </div>
+                </td>
+                <td class="status-cell">
+                  <label class="completed-control">
+                    <input type="checkbox" data-complete="${entry.id}" ${saved.completed ? 'checked' : ''} />
+                    <span class="${saved.completed ? 'status-text' : ''}">${saved.completed ? 'Completed' : 'Pending'}</span>
+                  </label>
+                </td>
+                <td>
+                  <textarea class="notes" data-notes="${entry.id}" placeholder="Add local notes for this screen">${saved.notes || ''}</textarea>
+                </td>
+              `;
+              tbody.appendChild(row);
+            });
+
+            body.appendChild(table);
+            section.appendChild(body);
+            sectionsRoot.appendChild(section);
+          });
+
+          sectionsRoot.querySelectorAll('[data-copy-url]').forEach((button) => {
+            button.addEventListener('click', () => {
+              const entry = manifest.find((item) => item.id === button.getAttribute('data-copy-url'));
+              copyText(absoluteUrl(entry.url), `Copied URL for ${entry.frameName}`);
+            });
+          });
+
+          sectionsRoot.querySelectorAll('[data-copy-prompt]').forEach((button) => {
+            button.addEventListener('click', () => {
+              const entry = manifest.find((item) => item.id === button.getAttribute('data-copy-prompt'));
+              copyText(buildPrompt(entry), `Copied Stitch prompt for ${entry.frameName}`);
+            });
+          });
+
+          sectionsRoot.querySelectorAll('[data-complete]').forEach((checkbox) => {
+            checkbox.addEventListener('change', () => {
+              const id = checkbox.getAttribute('data-complete');
+              const saved = getEntryState(store, id);
+              store = setEntryState(store, id, { ...saved, completed: checkbox.checked });
+              renderSections();
+            });
+          });
+
+          sectionsRoot.querySelectorAll('[data-notes]').forEach((textarea) => {
+            textarea.addEventListener('input', () => {
+              const id = textarea.getAttribute('data-notes');
+              const saved = getEntryState(store, id);
+              store = setEntryState(store, id, { ...saved, notes: textarea.value });
+            });
+          });
+        }
+
+        searchInput.addEventListener('input', renderSections);
+        renderFilters();
+        renderSections();
+      }
+
+      fetch('./stitch-screen-manifest.json')
+        .then((response) => response.json())
+        .then((manifest) => render(manifest))
+        .catch(() => {
+          document.getElementById('screen-sections').innerHTML = '<section class="section"><div class="empty-state">Unable to load the Stitch screen manifest.</div></section>';
+        });
+    </script>
+  </body>
+</html>

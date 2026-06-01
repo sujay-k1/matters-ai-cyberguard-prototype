@@ -40,6 +40,18 @@ Notes:
 - Local state resets on refresh
 - External integrations remain simulated
 
+## Public Stitch screen index
+
+https://sujay-k1.github.io/matters-ai-cyberguard-prototype/stitch-screen-index.html
+
+Use the public Stitch index to open deterministic browser states for reconstruction:
+
+- Each entry maps to a public GitHub Pages route that renders a stable queue, preview, investigation, overlay, AI-provenance, or operational-state screen.
+- Core journey and important overlay states are marked as editable Stitch frames.
+- Repetitive loading, empty, unavailable, and error variants are grouped as screenshot-only state gallery references.
+- The index includes Copy URL and Copy Stitch prompt actions so each route can be handed to Stitch consistently.
+- External interactions remain simulated; the rendered browser route is the visual source of truth.
+
 ## Interaction summary
 
 - Carbon-style global header with Overview, Work Queue, and Activity Log tabs
@@ -91,7 +103,10 @@ Notes:
 - `/?state=raw-evidence`
 - `/?state=evidence-detail`
 - `/?state=evidence-raw-json`
+- `/?state=entity-detail`
 - `/?state=hunt-results`
+- `/?state=hunt-results-selected`
+- `/?state=timeline-event-detached`
 - `/?state=timeline-detached`
 - `/?state=alert-detail`
 - `/?state=entity-activity`

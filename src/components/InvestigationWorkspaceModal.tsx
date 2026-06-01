@@ -100,6 +100,8 @@ interface InvestigationWorkspaceModalProps {
   initialEntityMode?: 'overview' | 'activity' | 'baseline';
   initialShowRawEvidence?: boolean;
   autoOpenMoveAlertModal?: boolean;
+  autoOpenHuntModal?: boolean;
+  initialSelectedHuntIds?: string[];
   sourceSystemScenario?: Extract<DemoUIState, 'source-system-info' | 'source-system-error' | 'source-system-permission-denied' | 'source-system-record-unavailable' | 'source-system-timeout'>;
 }
 
@@ -160,6 +162,8 @@ export function InvestigationWorkspaceModal({
   initialEntityMode = 'overview',
   initialShowRawEvidence = false,
   autoOpenMoveAlertModal = false,
+  autoOpenHuntModal = false,
+  initialSelectedHuntIds = [],
   sourceSystemScenario = 'source-system-info',
 }: InvestigationWorkspaceModalProps) {
   const context = useMemo(() => buildInvestigationContext(item), [item]);
@@ -235,7 +239,7 @@ export function InvestigationWorkspaceModal({
     setMoveAlertReason('');
     setMoveAlertReasonProvenance(undefined);
     setSelectedEntityMode('overview');
-    setSelectedHuntIds([]);
+    setSelectedHuntIds(initialSelectedHuntIds);
     setDetachedAlertSnapshot(null);
     tabScrollPositionsRef.current = {
       summary: 0,
@@ -246,7 +250,7 @@ export function InvestigationWorkspaceModal({
       activity: 0,
     };
     previousTabRef.current = activeTab;
-  }, [item.id, currentAnalyst]);
+  }, [item.id, currentAnalyst, initialSelectedHuntIds]);
 
   useEffect(() => {
     if (approvalSubmitError && workspace.selectedActionId) {
@@ -273,6 +277,13 @@ export function InvestigationWorkspaceModal({
       setMoveAlertModalOpen(true);
     }
   }, [autoOpenMoveAlertModal, workspace.selectedAlertId]);
+
+  useEffect(() => {
+    if (autoOpenHuntModal) {
+      setSelectedHuntIds(initialSelectedHuntIds);
+      setHuntOpen(true);
+    }
+  }, [autoOpenHuntModal, initialSelectedHuntIds, item.id]);
 
   useEffect(() => {
     const container = panelsScrollRef.current;
