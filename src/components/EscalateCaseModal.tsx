@@ -1,6 +1,7 @@
-import { Checkbox, ComboBox, Dropdown, Modal } from '@carbon/react';
+import { Checkbox, ComboBox, Dropdown, InlineLoading, Modal } from '@carbon/react';
 import { AISuggestedTextArea } from './AISuggestedTextArea';
 import type { DraftProvenance } from '../types/ai';
+import { InlineStateNotice } from './InlineStateNotice';
 
 interface EscalateCaseModalProps {
   open: boolean;
@@ -14,6 +15,9 @@ interface EscalateCaseModalProps {
   owners: string[];
   reasonSuggestion?: string;
   noteSuggestion?: string;
+  submitting?: boolean;
+  errorMessage?: string;
+  onRetry?: () => void;
   onTeamChange: (value: string) => void;
   onUrgencyChange: (value: string) => void;
   onReasonChange: (value: string) => void;
@@ -39,6 +43,9 @@ export function EscalateCaseModal(props: EscalateCaseModalProps) {
     owners,
     reasonSuggestion,
     noteSuggestion,
+    submitting,
+    errorMessage,
+    onRetry,
     onTeamChange,
     onUrgencyChange,
     onReasonChange,
@@ -56,14 +63,18 @@ export function EscalateCaseModal(props: EscalateCaseModalProps) {
       open={open}
       className="cg-investigation-submodal"
       modalHeading="Escalate case"
-      primaryButtonText="Create handoff"
+      primaryButtonText={submitting ? 'Creating handoff…' : 'Create handoff'}
       secondaryButtonText="Cancel"
-      primaryButtonDisabled={!team.trim() || !urgency.trim() || !reason.trim()}
+      primaryButtonDisabled={Boolean(submitting) || !team.trim() || !urgency.trim() || !reason.trim()}
       selectorPrimaryFocus="#escalate-reason"
       onRequestClose={onClose}
       onRequestSubmit={onSubmit}
     >
       <div className="cg-dialog-stack">
+        {submitting ? <InlineLoading description="Sending handoff…" /> : null}
+        {errorMessage ? (
+          <InlineStateNotice kind="error" title="Handoff failed." subtitle={errorMessage} actionLabel="Retry" onAction={onRetry} />
+        ) : null}
         <Dropdown
           id="escalate-team"
           titleText="Handoff team"

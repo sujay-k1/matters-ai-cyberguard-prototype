@@ -1,7 +1,8 @@
-import { Checkbox, Dropdown, Modal, TextInput } from '@carbon/react';
+import { Checkbox, Dropdown, InlineLoading, Modal, TextInput } from '@carbon/react';
 import type { WorkItemClassification } from '../types/investigation';
 import { AISuggestedTextArea } from './AISuggestedTextArea';
 import type { DraftProvenance } from '../types/ai';
+import { InlineStateNotice } from './InlineStateNotice';
 
 const CLASSIFICATIONS: WorkItemClassification[] = [
   'True positive — malicious activity',
@@ -22,6 +23,9 @@ interface ClassifyItemModalProps {
   exceptionOwner: string;
   createTuningFeedback: boolean;
   commentSuggestion?: string;
+  submitting?: boolean;
+  errorMessage?: string;
+  onRetry?: () => void;
   onClassificationChange: (value: WorkItemClassification) => void;
   onCommentChange: (value: string) => void;
   onCommentProvenanceChange?: (value: DraftProvenance) => void;
@@ -42,6 +46,9 @@ export function ClassifyItemModal(props: ClassifyItemModalProps) {
     exceptionOwner,
     createTuningFeedback,
     commentSuggestion,
+    submitting = false,
+    errorMessage,
+    onRetry,
     onClassificationChange,
     onCommentChange,
     onCommentProvenanceChange,
@@ -57,14 +64,18 @@ export function ClassifyItemModal(props: ClassifyItemModalProps) {
       open={open}
       className="cg-investigation-submodal"
       modalHeading={itemId ? `Classify ${itemId}` : 'Classify item'}
-      primaryButtonText="Save classification"
+      primaryButtonText={submitting ? 'Saving…' : 'Save classification'}
       secondaryButtonText="Cancel"
-      primaryButtonDisabled={!comment.trim()}
+      primaryButtonDisabled={submitting || !comment.trim()}
       selectorPrimaryFocus="#classification-comment"
       onRequestClose={onClose}
       onRequestSubmit={onSubmit}
     >
       <div className="cg-dialog-stack">
+        {submitting ? <InlineLoading description="Saving classification…" /> : null}
+        {errorMessage ? (
+          <InlineStateNotice kind="error" title="Classification could not be saved." subtitle={errorMessage} actionLabel="Retry" onAction={onRetry} />
+        ) : null}
         <Dropdown
           id="classification-select"
           titleText="Classification"

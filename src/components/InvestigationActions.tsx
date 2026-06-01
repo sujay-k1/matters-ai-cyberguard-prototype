@@ -1,6 +1,9 @@
-import { Button, Tag, Tooltip } from '@carbon/react';
+import { Button, InlineLoading, Tag, Tooltip } from '@carbon/react';
 import type { InvestigationResponseAction, ResponseActionState } from '../types/investigation';
+import { InlineStateNotice } from './InlineStateNotice';
+import { OperationalState } from './OperationalState';
 import { ProvenanceLabel } from './ProvenanceLabel';
+import { SectionSkeleton } from './SectionSkeleton';
 
 interface InvestigationActionsProps {
   actions: InvestigationResponseAction[];
@@ -9,6 +12,10 @@ interface InvestigationActionsProps {
   onPrimaryAction: (action: InvestigationResponseAction) => void;
   onSecondaryAction: (action: InvestigationResponseAction) => void;
   onAddNote: () => void;
+  loading?: boolean;
+  empty?: boolean;
+  containmentError?: boolean;
+  onRetryContainment?: () => void;
 }
 
 const ACTION_STATES: ResponseActionState[] = [
@@ -29,6 +36,10 @@ export function InvestigationActions({
   onPrimaryAction,
   onSecondaryAction,
   onAddNote,
+  loading = false,
+  empty = false,
+  containmentError = false,
+  onRetryContainment,
 }: InvestigationActionsProps) {
   const requiredContainment = actions.filter((action) => action.requiredForContainment);
   const completed = actions.filter((action) => action.currentState === 'Completed').length;
@@ -36,9 +47,32 @@ export function InvestigationActions({
   const inProgress = actions.filter((action) => action.currentState === 'In progress').length;
   const failed = actions.filter((action) => action.currentState === 'Failed').length;
 
+  if (loading) {
+    return <SectionSkeleton heading lines={2} cardCount={5} />;
+  }
+
+  if (empty || !actions.length) {
+    return (
+      <OperationalState
+        kind="empty"
+        title="No immediate response actions are recommended."
+        description="Continue investigation or add an analyst note."
+      />
+    );
+  }
+
   return (
     <div className="cg-investigation-tab-stack">
       <section className="cg-investigation-pane">
+        {containmentError ? (
+          <InlineStateNotice
+            kind="warning"
+            title="Unable to derive containment state."
+            subtitle="Review required action progress manually."
+            actionLabel="Retry"
+            onAction={onRetryContainment}
+          />
+        ) : null}
         <div className="cg-investigation-summary-strip">
           <div><span>Required containment actions</span><strong>{requiredContainment.length}</strong></div>
           <div><span>Completed</span><strong>{completed}</strong></div>
@@ -69,6 +103,7 @@ export function InvestigationActions({
                   <div>
                     <Tag type={actionStateTagType(action.currentState)}>{action.currentState}</Tag>
                     <h4>{action.title}</h4>
+                    {action.currentState === 'In progress' ? <InlineLoading description="" status="active" iconDescription="Action in progress" /> : null}
                   </div>
                   <span>{action.auditTimestamp}</span>
                 </div>

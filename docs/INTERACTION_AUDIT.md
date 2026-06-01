@@ -89,3 +89,9 @@
 | AI-assisted field | Escape dismissal | Suggestion dismisses for the current focus session | Implemented | Needs live QA |
 | AI-assisted field | Blur reset | Suggestion availability resets on refocus | Implemented | Needs live QA |
 | AI-assisted field | Provenance on submit | Saved note / classification / resolution / escalation stores draft provenance | Implemented | Needs live QA |
+| Queue | Empty / no-results / error recovery | Clear search, clear filters, clear preset, or retry from explicit state UI | Implemented | Build verified |
+| Filters | No-results / metadata warning | Clear filter search or retry metadata without blocking queue browsing | Implemented | Build verified |
+| Preview | AI loading / AI unavailable | Preserve drawer facts and controls while AI section loads or fails | Implemented | Build verified |
+| Investigation | Partial-data warning | Preserve loaded tabs and evidence while warning about missing telemetry | Implemented | Build verified |
+| Source system | Modal variants | Show prototype-only, unavailable, permission, record, or timeout modal states | Implemented | Needs live QA |
+| Hunt | Empty / no-results / error recovery | Preserve modal, allow retry, and clear hunt search | Implemented | Build verified |

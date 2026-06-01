@@ -21,6 +21,9 @@ export function QueuePagination({
   onPageChange,
   onPageSizeChange,
 }: QueuePaginationProps) {
+  if (totalItems === 0) {
+    return null;
+  }
   const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
   const start = totalItems === 0 ? 0 : (page - 1) * pageSize + 1;
   const end = Math.min(totalItems, page * pageSize);

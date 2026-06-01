@@ -3,6 +3,8 @@ import { Search, Tag } from '@carbon/react';
 import { ChevronRight, Close } from '@carbon/icons-react';
 import type { FilterSection } from '../types/queue';
 import { FilterFlyout } from './FilterFlyout';
+import { InlineStateNotice } from './InlineStateNotice';
+import { OperationalState } from './OperationalState';
 
 interface FilterPanelProps {
   sections: FilterSection[];
@@ -21,6 +23,8 @@ interface FilterPanelProps {
   shortcutLabelForIndex: (index: number) => string;
   activeFilterPinned: boolean;
   onHoverExit: () => void;
+  metadataWarning?: boolean;
+  onRetryMetadata?: () => void;
 }
 
 export function FilterPanel({
@@ -40,6 +44,8 @@ export function FilterPanel({
   shortcutLabelForIndex,
   activeFilterPinned,
   onHoverExit,
+  metadataWarning = false,
+  onRetryMetadata,
 }: FilterPanelProps) {
   const flattened = sections.flatMap((section) =>
     section.filters.map((filter) => ({ ...filter, section: section.section })),
@@ -83,8 +89,27 @@ export function FilterPanel({
             Clear all filters
           </button>
         ) : null}
+        {metadataWarning ? (
+          <InlineStateNotice
+            kind="warning"
+            title="Some filter metadata could not be loaded."
+            subtitle="Queue browsing remains available."
+            actionLabel="Retry"
+            onAction={onRetryMetadata}
+          />
+        ) : null}
       </div>
       <div className="cg-filter-panel__sections">
+        {sections.length === 0 ? (
+          <OperationalState
+            kind="no-results"
+            compact
+            title={`No filter families match “${searchValue}”.`}
+            description="Try a broader filter search or clear the current value."
+            primaryActionLabel="Clear search"
+            onPrimaryAction={() => onSearchChange('')}
+          />
+        ) : null}
         {sections.map((section) => {
           const visibleFilters = section.filters.filter((filter) => visibleIds.has(filter.id));
           if (visibleFilters.length === 0) {

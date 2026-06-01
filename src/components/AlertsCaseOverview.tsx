@@ -1,4 +1,8 @@
 import { Button, Tag } from '@carbon/react';
+import type { AsyncViewState } from '../types/uiState';
+import { InlineStateNotice } from './InlineStateNotice';
+import { OperationalState } from './OperationalState';
+import { SectionSkeleton } from './SectionSkeleton';
 
 interface AlertsCaseOverviewProps {
   metrics: {
@@ -14,6 +18,9 @@ interface AlertsCaseOverviewProps {
   topRiskTypes: Array<{ label: string; count: number }>;
   topSystems: Array<{ label: string; count: number }>;
   onOpenWorkQueuePreset: (preset: string) => void;
+  state?: AsyncViewState;
+  partialSections?: string[];
+  onRetry?: () => void;
 }
 
 export function AlertsCaseOverview({
@@ -22,6 +29,9 @@ export function AlertsCaseOverview({
   topRiskTypes,
   topSystems,
   onOpenWorkQueuePreset,
+  state,
+  partialSections = [],
+  onRetry,
 }: AlertsCaseOverviewProps) {
   const tiles = [
     { label: 'Critical open items', count: metrics.criticalOpenItems, preset: 'critical-open' },
@@ -32,8 +42,34 @@ export function AlertsCaseOverview({
     { label: 'Failed remediation actions', count: metrics.failedActions, preset: 'failed-actions' },
   ];
 
+  if (state?.status === 'loading') {
+    return (
+      <section className="cg-overview">
+        <SectionSkeleton heading lines={2} cardCount={6} />
+        <SectionSkeleton heading lines={2} cardCount={2} />
+      </section>
+    );
+  }
+
   return (
     <section className="cg-overview">
+      {state?.status === 'partial' ? (
+        <InlineStateNotice
+          kind="warning"
+          title={state.title ?? 'Some Overview metrics could not be calculated.'}
+          subtitle={state.description ?? 'Showing available operational data.'}
+          actionLabel={state.retryLabel}
+          onAction={onRetry}
+        />
+      ) : null}
+      {state?.status === 'empty' ? (
+        <OperationalState
+          kind="empty"
+          title={state.title ?? 'No urgent items require attention.'}
+          description={state.description ?? 'The current environment has no open security work.'}
+          compact
+        />
+      ) : null}
       <div className="cg-overview-section">
         <div className="cg-overview-section__header">
           <h2>Immediate attention</h2>
@@ -71,17 +107,21 @@ export function AlertsCaseOverview({
         <section className="cg-overview-section">
           <h2>Risk patterns</h2>
           <div className="cg-overview-list">
-            {topRiskTypes.map((entry) => (
+            {topRiskTypes.length ? topRiskTypes.map((entry) => (
               <div key={entry.label}><span>{entry.label}</span><Tag type="cool-gray">{entry.count}</Tag></div>
-            ))}
+            )) : (
+              <OperationalState compact kind="empty" title="Risk patterns will appear after alerts are detected." description="No risk-type rollups are available in the current scope." />
+            )}
           </div>
         </section>
         <section className="cg-overview-section">
           <h2>Top affected systems</h2>
           <div className="cg-overview-list">
-            {topSystems.map((entry) => (
+            {topSystems.length ? topSystems.map((entry) => (
               <div key={entry.label}><span>{entry.label}</span><Tag type="cool-gray">{entry.count}</Tag></div>
-            ))}
+            )) : (
+              <OperationalState compact kind="empty" title="No affected systems are recorded in the current scope." description="System rollups will appear when open work items contain affected systems." />
+            )}
           </div>
         </section>
       </div>

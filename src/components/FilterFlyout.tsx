@@ -1,6 +1,7 @@
 import { Checkbox } from '@carbon/react';
 import { Close } from '@carbon/icons-react';
 import type { FilterDefinition } from '../types/queue';
+import { OperationalState } from './OperationalState';
 
 interface FilterFlyoutProps {
   filter: FilterDefinition;
@@ -29,19 +30,28 @@ export function FilterFlyout({
         </button>
       </header>
       <div className="cg-filter-flyout__content">
-        {filter.values.map((value, index) => (
-          <div
-            key={value}
-            className={index === focusedValueIndex ? 'is-focused' : ''}
-          >
-            <Checkbox
-              id={`${filter.id}-${value}`}
-              labelText={value}
-              checked={selectedValues.includes(value)}
-              onChange={() => onToggle(value)}
-            />
-          </div>
-        ))}
+        {filter.values.length === 0 ? (
+          <OperationalState
+            kind="empty"
+            compact
+            title="No values available for this filter."
+            description="This filter currently has no selectable metadata values."
+          />
+        ) : (
+          filter.values.map((value, index) => (
+            <div
+              key={value}
+              className={index === focusedValueIndex ? 'is-focused' : ''}
+            >
+              <Checkbox
+                id={`${filter.id}-${value}`}
+                labelText={value}
+                checked={selectedValues.includes(value)}
+                onChange={() => onToggle(value)}
+              />
+            </div>
+          ))
+        )}
       </div>
     </aside>
   );

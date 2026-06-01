@@ -7,6 +7,10 @@
 - Do not reintroduce `More filters`.
 - Keep the prototype desktop-first.
 - Do not add unrequested modules.
+- Differentiate empty, no-results, unavailable, partial-data, and error states.
+- Preserve visible content during refresh where practical.
+- Use config-driven demo presets for review states instead of long ad hoc condition chains where possible.
+- Do not add artificial delays to normal local workflows.
 - Containment is derived from response-action progress and is not manually edited.
 - Keep remediation inside the Investigation `Actions` tab.
 - Resolve-with-exception requires a mandatory comment.
@@ -24,5 +28,6 @@
 - Run `npm run build` before committing.
 - Run the interaction audit before committing.
 - Run the AI provenance audit before committing.
+- Run the UI state audit before committing.
 - Use Stitch MCP read-only.
 - Do not modify Stitch screens.

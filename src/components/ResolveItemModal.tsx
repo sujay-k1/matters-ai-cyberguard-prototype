@@ -1,7 +1,8 @@
-import { Checkbox, Dropdown, Modal } from '@carbon/react';
+import { Checkbox, Dropdown, InlineLoading, Modal } from '@carbon/react';
 import type { IncludedAlertItem, WorkItemClassification } from '../types/investigation';
 import type { DraftProvenance } from '../types/ai';
 import { AISuggestedTextArea } from './AISuggestedTextArea';
+import { InlineStateNotice } from './InlineStateNotice';
 
 const CLASSIFICATIONS: WorkItemClassification[] = [
   'True positive — malicious activity',
@@ -33,6 +34,9 @@ interface ResolveItemModalProps {
   exceptionReason: string;
   suggestions?: Partial<Record<'resolutionSummary' | 'rootCause' | 'remediationSummary' | 'residualRisk' | 'finalComment' | 'exceptionReason', string>>;
   fieldProvenance?: Partial<Record<'resolutionSummary' | 'rootCause' | 'remediationSummary' | 'residualRisk' | 'finalComment' | 'exceptionReason', DraftProvenance>>;
+  submitting?: boolean;
+  errorMessage?: string;
+  onRetry?: () => void;
   onClassificationChange: (value: WorkItemClassification) => void;
   onResolutionSummaryChange: (value: string) => void;
   onRootCauseChange: (value: string) => void;
@@ -69,6 +73,9 @@ export function ResolveItemModal(props: ResolveItemModalProps) {
     warnings,
     exceptionReason,
     suggestions,
+    submitting = false,
+    errorMessage,
+    onRetry,
     onClassificationChange,
     onResolutionSummaryChange,
     onRootCauseChange,
@@ -103,14 +110,18 @@ export function ResolveItemModal(props: ResolveItemModalProps) {
       open={open}
       className="cg-investigation-submodal"
       modalHeading={itemId ? `Resolve ${itemId}` : 'Resolve item'}
-      primaryButtonText={exceptionRequired ? 'Resolve with exception' : 'Resolve item'}
+      primaryButtonText={submitting ? 'Saving…' : exceptionRequired ? 'Resolve with exception' : 'Resolve item'}
       secondaryButtonText="Cancel"
-      primaryButtonDisabled={disabled}
+      primaryButtonDisabled={submitting || disabled}
       selectorPrimaryFocus="#resolve-summary"
       onRequestClose={onClose}
       onRequestSubmit={onSubmit}
     >
       <div className="cg-dialog-stack">
+        {submitting ? <InlineLoading description="Saving resolution…" /> : null}
+        {errorMessage ? (
+          <InlineStateNotice kind="error" title="Resolution could not be saved." subtitle={errorMessage} actionLabel="Retry" onAction={onRetry} />
+        ) : null}
         {warnings.length ? (
           <div className="cg-warning-list">
             <strong>Resolution warnings</strong>

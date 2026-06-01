@@ -1,6 +1,7 @@
-import { ComboBox, Modal } from '@carbon/react';
+import { ComboBox, InlineLoading, Modal } from '@carbon/react';
 import { AISuggestedTextArea } from './AISuggestedTextArea';
 import type { DraftProvenance } from '../types/ai';
+import { InlineStateNotice } from './InlineStateNotice';
 
 interface ResponseApprovalModalProps {
   open: boolean;
@@ -9,6 +10,9 @@ interface ResponseApprovalModalProps {
   approvers: string[];
   heading?: string;
   justificationSuggestion?: string;
+  submitting?: boolean;
+  errorMessage?: string;
+  onRetry?: () => void;
   onApproverChange: (value: string) => void;
   onJustificationChange: (value: string) => void;
   onJustificationProvenanceChange?: (value: DraftProvenance) => void;
@@ -23,6 +27,9 @@ export function ResponseApprovalModal({
   approvers,
   heading = 'Request approval',
   justificationSuggestion,
+  submitting = false,
+  errorMessage,
+  onRetry,
   onApproverChange,
   onJustificationChange,
   onJustificationProvenanceChange,
@@ -34,14 +41,18 @@ export function ResponseApprovalModal({
       open={open}
       className="cg-investigation-submodal"
       modalHeading={heading}
-      primaryButtonText="Submit request"
+      primaryButtonText={submitting ? 'Submitting…' : 'Submit request'}
       secondaryButtonText="Cancel"
-      primaryButtonDisabled={!approver.trim() || !justification.trim()}
+      primaryButtonDisabled={submitting || !approver.trim() || !justification.trim()}
       selectorPrimaryFocus="#response-approval-justification"
       onRequestClose={onClose}
       onRequestSubmit={onSubmit}
     >
       <div className="cg-dialog-stack">
+        {submitting ? <InlineLoading description="Routing approval request…" /> : null}
+        {errorMessage ? (
+          <InlineStateNotice kind="error" title="Approval routing failed." subtitle={errorMessage} actionLabel="Retry" onAction={onRetry} />
+        ) : null}
         <ComboBox
           id="response-approver"
           titleText="Approver"

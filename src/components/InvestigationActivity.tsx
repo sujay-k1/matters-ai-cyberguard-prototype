@@ -1,12 +1,44 @@
 import { Tag } from '@carbon/react';
 import type { InvestigationActivityItem } from '../types/investigation';
 import { draftSourceLabel } from '../data/aiDraftSuggestions';
+import { OperationalState } from './OperationalState';
+import { SectionSkeleton } from './SectionSkeleton';
 
 interface InvestigationActivityProps {
   activity: InvestigationActivityItem[];
+  loading?: boolean;
+  error?: boolean;
+  noResults?: boolean;
+  onRetry?: () => void;
 }
 
-export function InvestigationActivity({ activity }: InvestigationActivityProps) {
+export function InvestigationActivity({ activity, loading = false, error = false, noResults = false, onRetry }: InvestigationActivityProps) {
+  if (loading) {
+    return <SectionSkeleton heading lines={2} cardCount={4} />;
+  }
+
+  if (error) {
+    return (
+      <OperationalState
+        kind="error"
+        title="Unable to retrieve activity history."
+        description="Activity history could not be loaded."
+        primaryActionLabel="Retry"
+        onPrimaryAction={onRetry}
+      />
+    );
+  }
+
+  if (!activity.length || noResults) {
+    return (
+      <OperationalState
+        kind={noResults ? 'no-results' : 'empty'}
+        title={noResults ? 'No activity events match the current filters.' : 'No analyst or system activity has been recorded yet.'}
+        description={noResults ? 'Adjust the current filter context or broaden the activity scope.' : 'Activity will appear after notes, state changes, or system updates.'}
+      />
+    );
+  }
+
   return (
     <div className="cg-investigation-tab-stack">
       {activity.map((entry) => (

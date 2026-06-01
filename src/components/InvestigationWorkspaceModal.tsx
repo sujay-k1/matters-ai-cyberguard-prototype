@@ -41,6 +41,11 @@ import { ResponseActionDetailPanel } from './ResponseActionDetailPanel';
 import { ResponseApprovalModal } from './ResponseApprovalModal';
 import { ResponseFailureModal } from './ResponseFailureModal';
 import { ResponseRejectModal } from './ResponseRejectModal';
+import { InlineStateNotice } from './InlineStateNotice';
+import { OperationalState } from './OperationalState';
+import { SectionSkeleton } from './SectionSkeleton';
+import { SourceSystemStateModal } from './SourceSystemStateModal';
+import type { DemoUIState } from '../types/uiState';
 
 interface InvestigationWorkspaceModalProps {
   open: boolean;
@@ -65,6 +70,34 @@ interface InvestigationWorkspaceModalProps {
   onAttachAlertToCase: (alertId: string) => void;
   onMoveAlertToCase: (alertId: string, destinationCaseId: string, reason: string, draftProvenance?: DraftProvenance) => void;
   availableCases: Array<{ id: string; title: string; status: string; alertCount: number }>;
+  loading?: boolean;
+  error?: boolean;
+  partial?: boolean;
+  summaryAIState?: 'ready' | 'loading' | 'error';
+  summaryEmptyTasks?: boolean;
+  timelineLoading?: boolean;
+  timelineError?: boolean;
+  timelineEmpty?: boolean;
+  timelineNoResults?: boolean;
+  evidenceLoading?: boolean;
+  evidenceError?: boolean;
+  evidenceEmpty?: boolean;
+  entitiesLoading?: boolean;
+  entitiesEmpty?: boolean;
+  actionsLoading?: boolean;
+  actionsEmpty?: boolean;
+  containmentError?: boolean;
+  activityLoading?: boolean;
+  activityError?: boolean;
+  activityEmpty?: boolean;
+  activityNoResults?: boolean;
+  huntLoading?: boolean;
+  huntError?: boolean;
+  huntEmpty?: boolean;
+  huntNoResults?: boolean;
+  approvalSubmitError?: boolean;
+  autoOpenSourceSystemModal?: boolean;
+  sourceSystemScenario?: Extract<DemoUIState, 'source-system-info' | 'source-system-error' | 'source-system-permission-denied' | 'source-system-record-unavailable' | 'source-system-timeout'>;
 }
 
 const TAB_ORDER: InvestigationTabId[] = ['summary', 'timeline', 'evidence', 'entities', 'actions', 'activity'];
@@ -94,6 +127,34 @@ export function InvestigationWorkspaceModal({
   onAttachAlertToCase,
   onMoveAlertToCase,
   availableCases,
+  loading = false,
+  error = false,
+  partial = false,
+  summaryAIState = 'ready',
+  summaryEmptyTasks = false,
+  timelineLoading = false,
+  timelineError = false,
+  timelineEmpty = false,
+  timelineNoResults = false,
+  evidenceLoading = false,
+  evidenceError = false,
+  evidenceEmpty = false,
+  entitiesLoading = false,
+  entitiesEmpty = false,
+  actionsLoading = false,
+  actionsEmpty = false,
+  containmentError = false,
+  activityLoading = false,
+  activityError = false,
+  activityEmpty = false,
+  activityNoResults = false,
+  huntLoading = false,
+  huntError = false,
+  huntEmpty = false,
+  huntNoResults = false,
+  approvalSubmitError = false,
+  autoOpenSourceSystemModal = false,
+  sourceSystemScenario = 'source-system-info',
 }: InvestigationWorkspaceModalProps) {
   const context = useMemo(() => buildInvestigationContext(item), [item]);
   const [quickNote, setQuickNote] = useState('');
@@ -130,6 +191,7 @@ export function InvestigationWorkspaceModal({
   const [selectedHuntIds, setSelectedHuntIds] = useState<string[]>([]);
   const [selectedEntityMode, setSelectedEntityMode] = useState<'overview' | 'activity' | 'baseline'>('overview');
   const [detachedAlertSnapshot, setDetachedAlertSnapshot] = useState<InvestigationWorkspaceState['alerts'][number] | null>(null);
+  const [sourceSystemTarget, setSourceSystemTarget] = useState<{ systemName: string; recordId: string } | null>(null);
   const panelsScrollRef = useRef<HTMLDivElement | null>(null);
   const isRestoringScrollRef = useRef(false);
   const tabScrollPositionsRef = useRef<Record<InvestigationTabId, number>>({
@@ -179,6 +241,22 @@ export function InvestigationWorkspaceModal({
     };
     previousTabRef.current = activeTab;
   }, [item.id, currentAnalyst]);
+
+  useEffect(() => {
+    if (approvalSubmitError && workspace.selectedActionId) {
+      setApprovalModalOpen(true);
+    }
+  }, [approvalSubmitError, workspace.selectedActionId]);
+
+  useEffect(() => {
+    if (autoOpenSourceSystemModal && !sourceSystemTarget) {
+      const candidate = workspace.evidence[0];
+      setSourceSystemTarget({
+        systemName: candidate?.sourceSystem ?? item.detection_source,
+        recordId: candidate?.id ?? item.id,
+      });
+    }
+  }, [autoOpenSourceSystemModal, item.detection_source, item.id, sourceSystemTarget, workspace.evidence]);
 
   useEffect(() => {
     const container = panelsScrollRef.current;
@@ -280,6 +358,10 @@ export function InvestigationWorkspaceModal({
         task.title,
       ),
     );
+  };
+
+  const openSourceSystemState = (systemName: string, recordId: string) => {
+    setSourceSystemTarget({ systemName, recordId });
   };
 
   const handleSaveHypothesis = () => {
@@ -672,7 +754,20 @@ export function InvestigationWorkspaceModal({
           />
         </ModalHeader>
         <ModalBody hasScrollingContent className="cg-investigation-modal__body">
-          <Tabs selectedIndex={TAB_ORDER.indexOf(activeTab)} onChange={({ selectedIndex }) => changeTab(TAB_ORDER[selectedIndex])}>
+          {error ? (
+            <OperationalState
+              kind="error"
+              title="Unable to load investigation workspace."
+              description="The queue item remains available for triage."
+              primaryActionLabel="Retry"
+              onPrimaryAction={onClose}
+              secondaryActionLabel="Return to queue"
+              onSecondaryAction={onClose}
+            />
+          ) : loading ? (
+            <SectionSkeleton heading lines={3} cardCount={5} />
+          ) : (
+            <Tabs selectedIndex={TAB_ORDER.indexOf(activeTab)} onChange={({ selectedIndex }) => changeTab(TAB_ORDER[selectedIndex])}>
             <TabList aria-label="Investigation tabs">
               <Tab>Summary</Tab>
               <Tab>Timeline</Tab>
@@ -682,6 +777,13 @@ export function InvestigationWorkspaceModal({
               <Tab>Activity</Tab>
             </TabList>
             <div className="cg-investigation-modal__workspace">
+              {partial ? (
+                <InlineStateNotice
+                  kind="warning"
+                  title="Some telemetry sources are temporarily unavailable."
+                  subtitle="Loaded evidence remains available."
+                />
+              ) : null}
               <div
                 className="cg-investigation-modal__panels"
                 ref={panelsScrollRef}
@@ -710,11 +812,13 @@ export function InvestigationWorkspaceModal({
                         setTaskAssignModalOpen(true);
                       }}
                       onTabChange={changeTab}
+                      aiSummaryState={summaryAIState}
+                      emptyTasks={summaryEmptyTasks}
                     />
                   </TabPanel>
                   <TabPanel>
                     <InvestigationTimeline
-                      events={workspace.timeline}
+                      events={timelineEmpty ? [] : workspace.timeline}
                       onUpdateRelevance={updateTimelineRelevance}
                       onOpenEvidence={(id) => patchWorkspace((current) => ({ ...current, selectedEvidenceId: id }))}
                       onOpenAlert={(id) => {
@@ -722,26 +826,35 @@ export function InvestigationWorkspaceModal({
                       }}
                       onAttachToggle={toggleTimelineAttachment}
                       onAddNote={() => setNoteModalOpen(true)}
-                      onOpenSourceSystem={(eventId) =>
-                        onToast('info', 'Prototype-only integration', `Opening the source record for ${eventId} is simulated in this prototype.`)
-                      }
+                      onOpenSourceSystem={(eventId) => openSourceSystemState('Timeline source', eventId)}
+                      onGoHunt={() => setHuntOpen(true)}
+                      loading={timelineLoading}
+                      error={timelineError}
+                      noResults={timelineNoResults}
+                      onRetry={() => onToast('info', 'Timeline reloaded', 'Retry is simulated in this prototype.')}
                     />
                   </TabPanel>
                   <TabPanel>
                     <InvestigationEvidence
                       alerts={workspace.alerts}
-                      evidence={workspace.evidence}
+                      evidence={evidenceEmpty ? [] : workspace.evidence}
                       onOpenAlert={(id) => patchWorkspace((current) => ({ ...current, selectedAlertId: id }))}
                       onOpenEvidence={(id) => patchWorkspace((current) => ({ ...current, selectedEvidenceId: id }))}
                       onUpdateAlertRelevance={updateAlertRelevance}
                       onUpdateEvidenceVerdict={updateEvidenceVerdict}
                       onToggleEvidenceAttached={toggleEvidenceAttached}
                       onAddNote={() => setNoteModalOpen(true)}
+                      loading={evidenceLoading}
+                      evidenceLoading={evidenceLoading}
+                      error={evidenceError}
+                      onRetry={() => onToast('info', 'Evidence reloaded', 'Retry is simulated in this prototype.')}
+                      onGoHunt={() => setHuntOpen(true)}
+                      itemType={item.item_type}
                     />
                   </TabPanel>
                   <TabPanel>
                     <InvestigationEntities
-                      entities={workspace.entities}
+                      entities={entitiesEmpty ? [] : workspace.entities}
                       onOpenEntity={(id) => {
                         setSelectedEntityMode('overview');
                         patchWorkspace((current) => ({ ...current, selectedEntityId: id }));
@@ -752,20 +865,32 @@ export function InvestigationWorkspaceModal({
                         setSelectedEntityMode('baseline');
                         patchWorkspace((current) => ({ ...current, selectedEntityId: id }));
                       }}
+                      loading={entitiesLoading}
+                      empty={entitiesEmpty}
                     />
                   </TabPanel>
                   <TabPanel>
                     <InvestigationActions
-                      actions={workspace.actions}
+                      actions={actionsEmpty ? [] : workspace.actions}
                       containment={item.containment}
                       onOpenAction={(id) => patchWorkspace((current) => ({ ...current, selectedActionId: id }))}
                       onPrimaryAction={handleActionPrimary}
                       onSecondaryAction={handleActionSecondary}
                       onAddNote={() => setNoteModalOpen(true)}
+                      loading={actionsLoading}
+                      empty={actionsEmpty}
+                      containmentError={containmentError}
+                      onRetryContainment={() => onToast('info', 'Containment recalculated', 'Retry is simulated in this prototype.')}
                     />
                   </TabPanel>
                   <TabPanel>
-                    <InvestigationActivity activity={activityFeed} />
+                    <InvestigationActivity
+                      activity={activityEmpty ? [] : activityFeed}
+                      loading={activityLoading}
+                      error={activityError}
+                      noResults={activityNoResults}
+                      onRetry={() => onToast('info', 'Activity reloaded', 'Retry is simulated in this prototype.')}
+                    />
                   </TabPanel>
                 </TabPanels>
               </div>
@@ -820,7 +945,7 @@ export function InvestigationWorkspaceModal({
                     setSelectedEntityMode('overview');
                     patchWorkspace((current) => ({ ...current, selectedEntityId: entityId }));
                   }}
-                  onOpenSourceSystem={() => onToast('info', 'Prototype-only integration', 'Opening source systems is simulated in this prototype.')}
+                  onOpenSourceSystem={() => openSourceSystemState(selectedAlert.system, selectedAlert.id)}
                 />
               ) : null}
 
@@ -840,7 +965,7 @@ export function InvestigationWorkspaceModal({
                   onOpenRelatedAlert={(alertId) => {
                     openRelatedAlertFromEvidence(alertId);
                   }}
-                  onOpenSourceSystem={() => onToast('info', 'Prototype-only integration', 'Opening source systems is simulated in this prototype.')}
+                  onOpenSourceSystem={() => openSourceSystemState(selectedEvidence.sourceSystem, selectedEvidence.id)}
                 />
               ) : null}
 
@@ -869,7 +994,8 @@ export function InvestigationWorkspaceModal({
                 />
               ) : null}
             </div>
-          </Tabs>
+            </Tabs>
+          )}
         </ModalBody>
       </ComposedModal>
 
@@ -934,6 +1060,17 @@ export function InvestigationWorkspaceModal({
         justification={approvalJustification}
         approvers={APPROVERS}
         justificationSuggestion={selectedAction ? buildAISuggestion('approval-justification', { item, investigationContext: context, workspace, action: selectedAction }) : undefined}
+        submitting={approvalSubmitError}
+        errorMessage={approvalSubmitError ? 'The approval request could not be routed. Preserve the current justification and retry.' : undefined}
+        onRetry={() => {
+          if (!selectedAction) return;
+          updateActionState(selectedAction.id, 'Pending approval', approvalJustification, {
+            approver: approvalApprover,
+            approvalRequestedBy: currentAnalyst,
+            approvalRequestedAt: 'Just now',
+          });
+          setApprovalModalOpen(false);
+        }}
         onApproverChange={setApprovalApprover}
         onJustificationChange={setApprovalJustification}
         onJustificationProvenanceChange={setApprovalJustificationProvenance}
@@ -999,7 +1136,7 @@ export function InvestigationWorkspaceModal({
 
       <HuntResultsModal
         open={huntOpen}
-        results={workspace.huntResults}
+        results={huntEmpty ? [] : workspace.huntResults}
         selectedIds={selectedHuntIds}
         onToggleSelected={(id) =>
           setSelectedHuntIds((current) =>
@@ -1008,6 +1145,10 @@ export function InvestigationWorkspaceModal({
         }
         onClose={() => setHuntOpen(false)}
         onAttachSelected={attachSelectedHuntResults}
+        loading={huntLoading}
+        error={huntError}
+        noResults={huntNoResults}
+        onRetry={() => onToast('info', 'Hunt retried', 'Retry is simulated in this prototype.')}
       />
 
       {selectedAlert ? (
@@ -1036,6 +1177,17 @@ export function InvestigationWorkspaceModal({
             patchWorkspace((current) => ({ ...current, selectedAlertId: null }));
             onToast('success', 'Alert moved', `${selectedAlert.id} moved to ${moveAlertDestinationId}.`);
           }}
+        />
+      ) : null}
+
+      {sourceSystemTarget ? (
+        <SourceSystemStateModal
+          open={Boolean(sourceSystemTarget)}
+          scenario={sourceSystemScenario}
+          systemName={sourceSystemTarget.systemName}
+          recordId={sourceSystemTarget.recordId}
+          onClose={() => setSourceSystemTarget(null)}
+          onRetry={() => onToast('info', 'Source-system retry', 'Retry is simulated in this prototype.')}
         />
       ) : null}
     </>

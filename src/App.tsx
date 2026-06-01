@@ -28,11 +28,13 @@ import { ResolveItemModal } from './components/ResolveItemModal';
 import { ShortcutGuideModal } from './components/ShortcutGuideModal';
 import { WorkQueueHeader } from './components/WorkQueueHeader';
 import { WorkQueueTable } from './components/WorkQueueTable';
+import { useDemoUIState } from './hooks/useDemoUIState';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { useWorkflowState } from './hooks/useWorkflowState';
 import { buildAISuggestion } from './data/aiDraftSuggestions';
 import type { DraftProvenance } from './types/ai';
 import type { InvestigationTabId, WorkItemClassification, WorkflowActivityEvent } from './types/investigation';
+import type { AsyncViewState } from './types/uiState';
 import type {
   ColumnDefinition,
   FilterDefinition,
@@ -99,6 +101,7 @@ const workflowStatusOptions = [
 const severityOptions = ['Critical', 'High', 'Medium', 'Low', 'Informational'] as const;
 
 function App() {
+  const demoUI = useDemoUIState();
   const spec = specData as unknown as {
     filter_groups: FilterSection[];
     sample_work_items: { alerts: WorkItem[]; cases: WorkItem[] };
@@ -360,13 +363,54 @@ function App() {
       .sort((a, b) => b.id.localeCompare(a.id));
   }, [globalActivityLog, items, workflowStateByItemId]);
 
+  const queueState = demoUI.getSurfaceState('queue');
+  const filterState = demoUI.getSurfaceState('filter');
+  const overviewState = demoUI.getSurfaceState('overview');
+  const previewSurfaceState = demoUI.getSurfaceState('preview');
+  const previewAiState = demoUI.getSurfaceState('preview-ai');
+  const investigationState = demoUI.getSurfaceState('investigation');
+  const summaryAiSurfaceState = demoUI.getSurfaceState('summary-ai');
+  const timelineState = demoUI.getSurfaceState('timeline');
+  const evidenceState = demoUI.getSurfaceState('evidence');
+  const entitiesState = demoUI.getSurfaceState('entities');
+  const actionsState = demoUI.getSurfaceState('actions');
+  const containmentState = demoUI.getSurfaceState('containment');
+  const activityState = demoUI.getSurfaceState('activity');
+  const huntState = demoUI.getSurfaceState('hunt');
+  const submissionScenario = demoUI.submissionScenario;
+
+  const queueEmptyKind = resolveQueueEmptyKind({
+    queueState,
+    items,
+    filteredBySegment,
+    filteredItems,
+    queueSearch,
+    selectedFilters,
+    queuePreset,
+    segment,
+  });
+
   useEffect(() => {
     const state = new URLSearchParams(window.location.search).get('state');
     if (!state) {
       return;
     }
 
-    if (state === 'preview') {
+    if (state === 'queue-loading' || state === 'queue-refreshing' || state === 'queue-empty' || state === 'queue-no-results' || state === 'queue-error' || state === 'filter-no-results') {
+      setActiveTab('Work Queue');
+      if (state === 'queue-no-results') {
+        setQueueSearch('snowflake export');
+      }
+      if (state === 'filter-no-results') {
+        setFilterSearch('nonexistent');
+      }
+    } else if (state === 'overview-loading' || state === 'overview-empty' || state === 'overview-partial-error') {
+      setActiveTab('Overview');
+    } else if (state === 'preview-loading' || state === 'preview-ai-loading' || state === 'preview-ai-error') {
+      const heroCase = items.find((item) => item.id === 'CASE-3001') ?? items[0];
+      setActiveTab('Work Queue');
+      setPreviewItemId(heroCase?.id ?? null);
+    } else if (state === 'preview') {
       const firstCase = items.find((item) => item.item_type === 'case') ?? items[0];
       setPreviewItemId(firstCase?.id ?? null);
     } else if (state === 'alert-preview') {
@@ -385,6 +429,29 @@ function App() {
       setColumnsOpen(true);
     } else if (state === 'shortcut-guide') {
       setShortcutGuideOpen(true);
+    } else if (state === 'investigation-loading' || state === 'investigation-error' || state === 'investigation-partial' || state === 'summary-ai-loading' || state === 'summary-ai-error' || state === 'summary-empty-tasks' || state === 'timeline-loading' || state === 'timeline-empty' || state === 'timeline-no-results' || state === 'timeline-error' || state === 'evidence-loading' || state === 'evidence-empty' || state === 'evidence-error' || state === 'entities-loading' || state === 'entities-empty' || state === 'baseline-error' || state === 'actions-loading' || state === 'actions-empty' || state === 'containment-error' || state === 'activity-empty' || state === 'activity-no-results' || state === 'activity-error' || state === 'hunt-loading' || state === 'hunt-empty' || state === 'hunt-no-results' || state === 'hunt-error' || state === 'source-system-info' || state === 'source-system-error' || state === 'source-system-permission-denied' || state === 'source-system-record-unavailable' || state === 'source-system-timeout' || state === 'approval-submit-error') {
+      const heroCase = items.find((item) => item.id === 'CASE-3001') ?? items.find((item) => item.item_type === 'case') ?? items[0];
+      if (heroCase) ensureWorkspaceState(heroCase);
+      setPreviewItemId(heroCase?.id ?? null);
+      setInvestigationItemId(heroCase?.id ?? null);
+      setActiveInvestigationTab(
+        state.startsWith('timeline') ? 'timeline'
+          : state.startsWith('evidence') ? 'evidence'
+          : state.startsWith('entities') || state === 'baseline-error' ? 'entities'
+          : state.startsWith('actions') || state === 'containment-error' || state === 'approval-submit-error' ? 'actions'
+          : state.startsWith('activity') ? 'activity'
+          : 'summary',
+      );
+      setInvestigationInfoOpen(true);
+      if (state === 'approval-submit-error' && heroCase) {
+        updateWorkspaceState(heroCase, (current) => ({
+          ...current,
+          selectedActionId: current.actions.find((entry) => entry.currentState === 'Recommended' && entry.requiresApproval)?.id ?? current.actions[0]?.id ?? null,
+        }));
+      }
+      if (state.startsWith('hunt-')) {
+        updateWorkspaceState(heroCase!, (current) => ({ ...current, selectedEntityId: current.entities[0]?.id ?? null }));
+      }
     } else if (state === 'investigation') {
       const heroCase = items.find((item) => item.id === 'CASE-3001') ?? items.find((item) => item.item_type === 'case') ?? items[0];
       if (heroCase) ensureWorkspaceState(heroCase);
@@ -523,7 +590,7 @@ function App() {
 
   useEffect(() => {
     setPage(1);
-  }, [queuePreset, queueSearch, selectedFilters, segment, sortOptionId]);
+  }, [queuePreset, queueSearch, selectedFilters, segment, sortOptionId, sortedItems.length]);
 
   useEffect(() => {
     queueSearchRef.current = document.querySelector('#queue-search') as HTMLInputElement | null;
@@ -1030,6 +1097,9 @@ function App() {
             itemsByStatus={itemsByStatus}
             topRiskTypes={topRiskTypes}
             topSystems={topSystems}
+            state={overviewState}
+            partialSections={overviewState?.status === 'partial' ? ['metrics'] : []}
+            onRetry={() => addToast('info', 'Overview refreshed', 'Retry is simulated in this prototype.')}
             onOpenWorkQueuePreset={(preset) => {
               setActiveTab('Work Queue');
               setQueueSearch('');
@@ -1042,7 +1112,12 @@ function App() {
 
         {activeTab === 'Activity Log' ? (
           <ModuleActivityLog
-            events={moduleActivityEvents}
+            events={activityState?.status === 'empty' ? [] : moduleActivityEvents}
+            loading={activityState?.status === 'loading'}
+            error={activityState?.status === 'error'}
+            partial={activityState?.status === 'partial'}
+            noResults={activityState?.status === 'no-results'}
+            onRetry={() => addToast('info', 'Activity log refreshed', 'Retry is simulated in this prototype.')}
             onOpenWorkItem={(itemId) => {
               setActiveTab('Work Queue');
               setQueuePreset(null);
@@ -1092,6 +1167,8 @@ function App() {
                 onRemoveValue={(filterId, value) => handleToggleFilterValue(filterId, value)}
                 onClearAll={() => setSelectedFilters({})}
                 shortcutLabelForIndex={shortcutLabel}
+                metadataWarning={filterState?.status === 'partial' || filterState?.status === 'error'}
+                onRetryMetadata={() => addToast('info', 'Filter metadata refreshed', 'Retry is simulated in this prototype.')}
               />
               <section className="cg-content-area">
                 <div className="cg-content-meta">
@@ -1122,6 +1199,15 @@ function App() {
                   columns={columns}
                   selectedIds={selectedIds}
                   previewItemId={previewItemId}
+                  loading={queueState?.status === 'loading'}
+                  refreshing={queueState?.status === 'refreshing'}
+                  error={queueState?.status === 'error'}
+                  emptyKind={queueEmptyKind}
+                  emptyContext={queueSearch || segment}
+                  onRetry={() => addToast('info', 'Queue refreshed', 'Retry is simulated in this prototype.')}
+                  onClearSearch={() => setQueueSearch('')}
+                  onClearFilters={() => setSelectedFilters({})}
+                  onClearPreset={() => setQueuePreset(null)}
                   onToggleSelect={(id) =>
                     setSelectedIds((current) =>
                       current.includes(id) ? current.filter((entry) => entry !== id) : [...current, id],
@@ -1148,16 +1234,18 @@ function App() {
                     />
                   </div>
                 ) : null}
-                <QueuePagination
-                  totalItems={sortedItems.length}
-                  page={page}
-                  pageSize={pageSize}
-                  onPageChange={setPage}
-                  onPageSizeChange={(size) => {
-                    setPageSize(size);
-                    setPage(1);
-                  }}
-                />
+                {pagedItems.length > 0 && queueState?.status !== 'loading' && queueState?.status !== 'error' ? (
+                  <QueuePagination
+                    totalItems={sortedItems.length}
+                    page={page}
+                    pageSize={pageSize}
+                    onPageChange={setPage}
+                    onPageSizeChange={(size) => {
+                      setPageSize(size);
+                      setPage(1);
+                    }}
+                  />
+                ) : null}
               </section>
             </div>
             {previewItem ? (
@@ -1165,6 +1253,10 @@ function App() {
                 <PreviewDrawer
                   item={previewItem}
                   currentAnalyst={CURRENT_ANALYST}
+                  loading={previewSurfaceState?.status === 'loading'}
+                  error={previewSurfaceState?.status === 'error'}
+                  aiSummaryState={previewAiState?.status === 'loading' ? 'loading' : previewAiState?.status === 'error' ? 'error' : 'ready'}
+                  onRetry={() => setPreviewItemId(null)}
                   onClose={() => setPreviewItemId(null)}
                   onAssignToMe={handleAssignToMe}
                   onReassign={openDrawerAssign}
@@ -1447,6 +1539,7 @@ function App() {
         classification={pendingClassification}
         comment={classificationComment}
         commentSuggestion={classificationTargetItem ? buildAISuggestion('classification-comment', { item: classificationTargetItem, classification: pendingClassification, workspace: getOrCreateWorkspace(classificationTargetItem) }) : undefined}
+        submitting={false}
         duplicateCaseId={duplicateCaseId}
         exceptionOwner={exceptionOwner}
         createTuningFeedback={createTuningFeedback}
@@ -1478,6 +1571,9 @@ function App() {
         selectedRecipients={resolutionRecipients}
         warnings={resolutionWarnings}
         exceptionReason={exceptionReason}
+        submitting={submissionScenario === 'resolution-submit-error'}
+        errorMessage={submissionScenario === 'resolution-submit-error' ? 'The resolution record could not be saved. Review the entered details and retry.' : undefined}
+        onRetry={handleSubmitResolution}
         suggestions={
           classificationTargetItem
             ? {
@@ -1520,6 +1616,9 @@ function App() {
         urgency={escalationUrgency}
         reason={escalationReason}
         note={escalationNote}
+        submitting={submissionScenario === 'escalation-submit-error'}
+        errorMessage={submissionScenario === 'escalation-submit-error' ? 'The handoff could not be created. Preserve the current details and retry.' : undefined}
+        onRetry={handleSubmitEscalation}
         reasonSuggestion={classificationTargetItem ? buildAISuggestion('escalation-reason', { item: classificationTargetItem, workspace: getOrCreateWorkspace(classificationTargetItem), selectedTeam: escalationTeam }) : undefined}
         noteSuggestion={classificationTargetItem ? buildAISuggestion('escalation-note', { item: classificationTargetItem, workspace: getOrCreateWorkspace(classificationTargetItem), selectedTeam: escalationTeam }) : undefined}
         taskOwner={escalationTaskOwner}
@@ -1545,6 +1644,34 @@ function App() {
           activeTab={activeInvestigationTab}
           currentAnalyst={CURRENT_ANALYST}
           workspace={investigationWorkspace}
+          loading={investigationState?.status === 'loading'}
+          error={investigationState?.status === 'error'}
+          partial={investigationState?.status === 'partial'}
+          summaryAIState={summaryAiSurfaceState?.status === 'loading' ? 'loading' : summaryAiSurfaceState?.status === 'error' ? 'error' : 'ready'}
+          summaryEmptyTasks={demoUI.isDemoState('summary-empty-tasks')}
+          timelineLoading={timelineState?.status === 'loading'}
+          timelineError={timelineState?.status === 'error'}
+          timelineEmpty={timelineState?.status === 'empty'}
+          timelineNoResults={timelineState?.status === 'no-results'}
+          evidenceLoading={evidenceState?.status === 'loading'}
+          evidenceError={evidenceState?.status === 'error'}
+          evidenceEmpty={evidenceState?.status === 'empty'}
+          entitiesLoading={entitiesState?.status === 'loading'}
+          entitiesEmpty={entitiesState?.status === 'empty' || demoUI.isDemoState('entities-empty')}
+          actionsLoading={actionsState?.status === 'loading'}
+          actionsEmpty={actionsState?.status === 'empty'}
+          containmentError={containmentState?.status === 'error'}
+          activityLoading={activityState?.status === 'loading'}
+          activityError={activityState?.status === 'error'}
+          activityEmpty={activityState?.status === 'empty'}
+          activityNoResults={activityState?.status === 'no-results'}
+          huntLoading={huntState?.status === 'loading'}
+          huntError={huntState?.status === 'error'}
+          huntEmpty={huntState?.status === 'empty'}
+          huntNoResults={huntState?.status === 'no-results'}
+          approvalSubmitError={submissionScenario === 'approval-submit-error'}
+          autoOpenSourceSystemModal={Boolean(demoUI.sourceSystemScenario)}
+          sourceSystemScenario={demoUI.sourceSystemScenario ?? 'source-system-info'}
           onClose={() => setInvestigationInfoOpen(false)}
           onTabChange={setActiveInvestigationTab}
           onAssignToMe={() => {
@@ -1680,6 +1807,36 @@ function PlaceholderCard({ title, description }: { title: string; description: s
       <p>{description}</p>
     </section>
   );
+}
+
+function resolveQueueEmptyKind({
+  queueState,
+  items,
+  filteredBySegment,
+  filteredItems,
+  queueSearch,
+  selectedFilters,
+  queuePreset,
+  segment,
+}: {
+  queueState?: AsyncViewState;
+  items: WorkItem[];
+  filteredBySegment: WorkItem[];
+  filteredItems: WorkItem[];
+  queueSearch: string;
+  selectedFilters: Record<string, string[]>;
+  queuePreset: QueuePreset | null;
+  segment: QueueSegment;
+}): 'empty' | 'search' | 'filters' | 'preset' | 'segment' | undefined {
+  if (queueState?.status === 'empty') return 'empty';
+  if (queueState?.status === 'no-results') return 'search';
+  if (filteredItems.length > 0) return undefined;
+  if (queueSearch.trim()) return 'search';
+  if (Object.values(selectedFilters).some((values) => values.length > 0)) return 'filters';
+  if (queuePreset) return 'preset';
+  if (segment !== 'All' && filteredBySegment.length === 0) return 'segment';
+  if (items.length === 0) return 'empty';
+  return undefined;
 }
 
 function deriveComposition(item: WorkItem) {

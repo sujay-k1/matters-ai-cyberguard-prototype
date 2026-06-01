@@ -1,6 +1,8 @@
-import { Checkbox, Modal, Search } from '@carbon/react';
+import { Checkbox, InlineLoading, Modal, Search } from '@carbon/react';
 import { useMemo, useState } from 'react';
 import type { HuntResult } from '../types/investigation';
+import { InlineStateNotice } from './InlineStateNotice';
+import { OperationalState } from './OperationalState';
 
 interface HuntResultsModalProps {
   open: boolean;
@@ -9,6 +11,10 @@ interface HuntResultsModalProps {
   onToggleSelected: (id: string) => void;
   onClose: () => void;
   onAttachSelected: () => void;
+  loading?: boolean;
+  error?: boolean;
+  noResults?: boolean;
+  onRetry?: () => void;
 }
 
 export function HuntResultsModal({
@@ -18,6 +24,10 @@ export function HuntResultsModal({
   onToggleSelected,
   onClose,
   onAttachSelected,
+  loading = false,
+  error = false,
+  noResults = false,
+  onRetry,
 }: HuntResultsModalProps) {
   const [search, setSearch] = useState('');
   const filtered = useMemo(
@@ -41,9 +51,35 @@ export function HuntResultsModal({
       onRequestSubmit={onAttachSelected}
     >
       <div className="cg-dialog-stack">
+        {loading ? <InlineLoading description="Searching related activity…" /> : null}
+        {error ? (
+          <InlineStateNotice
+            kind="error"
+            title="Unable to search related activity."
+            subtitle="The hunt results could not be retrieved."
+            actionLabel="Retry"
+            onAction={onRetry}
+          />
+        ) : null}
         <Search id="hunt-result-search" labelText="Search hunt results" placeholder="Search hunt results" value={search} onChange={(event) => setSearch(event.currentTarget.value)} />
         <div className="cg-hunt-results-list">
-          {filtered.map((result) => (
+          {!loading && !error && !results.length ? (
+            <OperationalState
+              kind="empty"
+              compact
+              title="No additional related activity was found."
+              description="Try a different entity, source, or time range."
+            />
+          ) : !loading && !error && (noResults || !filtered.length) ? (
+            <OperationalState
+              kind="no-results"
+              compact
+              title="No hunt results match your search."
+              description="Clear the search to review all retrieved results."
+              primaryActionLabel="Clear search"
+              onPrimaryAction={() => setSearch('')}
+            />
+          ) : filtered.map((result) => (
             <label key={result.id} className="cg-hunt-result-row">
               <Checkbox id={`hunt-${result.id}`} labelText="" checked={selectedIds.includes(result.id)} onChange={() => onToggleSelected(result.id)} />
               <div>

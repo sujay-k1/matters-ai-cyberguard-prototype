@@ -5,6 +5,7 @@ import {
   AILabel,
   AILabelContent,
   Button,
+  InlineLoading,
   OverflowMenu,
   OverflowMenuItem,
   Tag,
@@ -20,7 +21,9 @@ import {
   WarningAlt,
 } from '@carbon/icons-react';
 import type { WorkItem } from '../types/queue';
+import { OperationalState } from './OperationalState';
 import { ProvenanceLabel } from './ProvenanceLabel';
+import { SectionSkeleton } from './SectionSkeleton';
 
 type DrawerSection =
   | 'scope'
@@ -46,6 +49,10 @@ interface PreviewDrawerProps {
   onClassifyItem: () => void;
   onReviewRelatedAlerts: () => void;
   onConsolidateHint: () => void;
+  loading?: boolean;
+  error?: boolean;
+  aiSummaryState?: 'ready' | 'loading' | 'error';
+  onRetry?: () => void;
 }
 
 export function PreviewDrawer({
@@ -65,6 +72,10 @@ export function PreviewDrawer({
   onClassifyItem,
   onReviewRelatedAlerts,
   onConsolidateHint,
+  loading = false,
+  error = false,
+  aiSummaryState = 'ready',
+  onRetry,
 }: PreviewDrawerProps) {
   const preview = item.preview;
   const [openSections, setOpenSections] = useState<Record<DrawerSection, boolean>>({
@@ -166,6 +177,18 @@ export function PreviewDrawer({
       </header>
 
       <div className="cg-preview-body">
+        {error ? (
+          <OperationalState
+            kind="error"
+            title="This work item is no longer available."
+            description="It may have been merged, detached, or resolved."
+            primaryActionLabel="Return to queue"
+            onPrimaryAction={onRetry ?? onClose}
+          />
+        ) : loading ? (
+          <SectionSkeleton heading lines={3} cardCount={4} />
+        ) : (
+          <>
         <section className="cg-preview-intro">
           <div className="cg-preview-heading">
             <h2>{preview.identity_and_urgency.title}</h2>
@@ -227,7 +250,20 @@ export function PreviewDrawer({
                 AILabelContent={<AILabelContent>Generated using current alert and case context.</AILabelContent>}
               />
             </div>
-            <p className="cg-readable-copy">{preview.ai_summary}</p>
+            {aiSummaryState === 'loading' ? (
+              <div className="cg-preview-inline-loading">
+                <InlineLoading description="Generating AI summary…" />
+              </div>
+            ) : aiSummaryState === 'error' ? (
+              <OperationalState
+                kind="unavailable"
+                compact
+                title="AI summary unavailable."
+                description="Review quick facts and evidence directly."
+              />
+            ) : (
+              <p className="cg-readable-copy">{preview.ai_summary}</p>
+            )}
           </PreviewBlock>
 
           <PreviewBlock title={natureTitle}>
@@ -451,6 +487,8 @@ export function PreviewDrawer({
             </dl>
           </AccordionItem>
         </Accordion>
+          </>
+        )}
       </div>
 
       <footer className="cg-preview-footer">

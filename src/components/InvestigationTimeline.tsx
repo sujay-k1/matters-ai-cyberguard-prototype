@@ -2,6 +2,8 @@ import { Accordion, AccordionItem, Button, Dropdown, Search, Tag, Tooltip } from
 import { useMemo, useState } from 'react';
 import type { TimelineEvent } from '../types/investigation';
 import { compareTimeRange } from '../hooks/useWorkflowState';
+import { OperationalState } from './OperationalState';
+import { SectionSkeleton } from './SectionSkeleton';
 
 interface InvestigationTimelineProps {
   events: TimelineEvent[];
@@ -11,6 +13,11 @@ interface InvestigationTimelineProps {
   onAttachToggle: (eventId: string) => void;
   onAddNote: () => void;
   onOpenSourceSystem: (eventId: string) => void;
+  onGoHunt?: () => void;
+  loading?: boolean;
+  error?: boolean;
+  noResults?: boolean;
+  onRetry?: () => void;
 }
 
 const activityTypeOptions = ['All activity', 'Identity', 'Snowflake', 'Endpoint', 'Network', 'Analyst action'];
@@ -23,6 +30,11 @@ export function InvestigationTimeline({
   onAttachToggle,
   onAddNote,
   onOpenSourceSystem,
+  onGoHunt,
+  loading = false,
+  error = false,
+  noResults = false,
+  onRetry,
 }: InvestigationTimelineProps) {
   const [searchValue, setSearchValue] = useState('');
   const [activityType, setActivityType] = useState(activityTypeOptions[0]);
@@ -51,6 +63,31 @@ export function InvestigationTimeline({
       }),
     [activityType, alertFilter, entityFilter, events, searchValue, systemFilter, timeRangeFilter],
   );
+
+  const clearFilters = () => {
+    setSearchValue('');
+    setActivityType(activityTypeOptions[0]);
+    setSystemFilter('All systems');
+    setAlertFilter('All alerts');
+    setEntityFilter('All entities');
+    setTimeRangeFilter('All times');
+  };
+
+  if (loading) {
+    return <SectionSkeleton heading lines={2} cardCount={4} />;
+  }
+
+  if (error) {
+    return (
+      <OperationalState
+        kind="error"
+        title="Unable to retrieve timeline events."
+        description="The timeline could not be loaded for this investigation."
+        primaryActionLabel="Retry"
+        onPrimaryAction={onRetry}
+      />
+    );
+  }
 
   return (
     <div className="cg-investigation-timeline">
@@ -110,7 +147,23 @@ export function InvestigationTimeline({
       </div>
 
       <div className="cg-investigation-timeline-list">
-        {filteredEvents.map((event) => (
+        {!events.length ? (
+          <OperationalState
+            kind="empty"
+            title="No timeline events are attached to this investigation yet."
+            description="Expand the investigation scope to bring in related activity."
+            primaryActionLabel={onGoHunt ? 'Go hunt' : undefined}
+            onPrimaryAction={onGoHunt}
+          />
+        ) : noResults || !filteredEvents.length ? (
+          <OperationalState
+            kind="no-results"
+            title="No timeline events match the current filters."
+            description="Clear timeline filters or broaden the current search."
+            primaryActionLabel="Clear timeline filters"
+            onPrimaryAction={clearFilters}
+          />
+        ) : filteredEvents.map((event) => (
           <div key={event.id} className="cg-investigation-timeline-item">
             <div className="cg-investigation-timeline-item__header">
               <div className="cg-investigation-timeline-item__header-copy">

@@ -1,11 +1,23 @@
 import { Checkbox, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Tag } from '@carbon/react';
 import type { ColumnDefinition, WorkItem } from '../types/queue';
+import { InlineStateNotice } from './InlineStateNotice';
+import { OperationalState } from './OperationalState';
+import { TableLoadingState } from './TableLoadingState';
 
 interface WorkQueueTableProps {
   items: WorkItem[];
   columns: ColumnDefinition[];
   selectedIds: string[];
   previewItemId: string | null;
+  loading?: boolean;
+  refreshing?: boolean;
+  error?: boolean;
+  emptyKind?: 'empty' | 'search' | 'filters' | 'preset' | 'segment';
+  emptyContext?: string;
+  onRetry?: () => void;
+  onClearSearch?: () => void;
+  onClearFilters?: () => void;
+  onClearPreset?: () => void;
   onToggleSelect: (id: string) => void;
   onToggleSelectAll: (checked: boolean) => void;
   onOpenPreview: (id: string) => void;
@@ -16,6 +28,15 @@ export function WorkQueueTable({
   columns,
   selectedIds,
   previewItemId,
+  loading = false,
+  refreshing = false,
+  error = false,
+  emptyKind,
+  emptyContext,
+  onRetry,
+  onClearSearch,
+  onClearFilters,
+  onClearPreset,
   onToggleSelect,
   onToggleSelectAll,
   onOpenPreview,
@@ -24,8 +45,56 @@ export function WorkQueueTable({
   const allSelected = items.length > 0 && items.every((item) => selectedIds.includes(item.id));
   const pinnedColumns = visibleColumns.filter((column) => column.pinned);
 
+  if (loading) {
+    return (
+      <div className="cg-table-shell" id="queue-list" tabIndex={-1}>
+        <TableLoadingState columnCount={visibleColumns.length + 1} rowCount={8} />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="cg-table-shell" id="queue-list" tabIndex={-1}>
+        <OperationalState
+          kind="error"
+          title="Unable to load work items."
+          description="The queue could not be retrieved."
+          primaryActionLabel="Retry"
+          onPrimaryAction={onRetry}
+        />
+      </div>
+    );
+  }
+
+  if (items.length === 0) {
+    const emptyConfig = resolveEmptyState(emptyKind, emptyContext);
+    return (
+      <div className="cg-table-shell" id="queue-list" tabIndex={-1}>
+        <OperationalState
+          kind={emptyConfig.kind}
+          title={emptyConfig.title}
+          description={emptyConfig.description}
+          primaryActionLabel={emptyConfig.primaryLabel}
+          onPrimaryAction={
+            emptyKind === 'search'
+              ? onClearSearch
+              : emptyKind === 'filters'
+                ? onClearFilters
+                : emptyKind === 'preset'
+                  ? onClearPreset
+                  : undefined
+          }
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="cg-table-shell" id="queue-list" tabIndex={-1}>
+      {refreshing ? (
+        <InlineStateNotice kind="info" title="Refreshing work items" subtitle="Refreshing work items…" />
+      ) : null}
       <div className="cg-table-scroll">
         <Table size="sm" useZebraStyles={false}>
           <TableHead>
@@ -106,6 +175,48 @@ export function WorkQueueTable({
       </div>
     </div>
   );
+}
+
+function resolveEmptyState(
+  emptyKind: WorkQueueTableProps['emptyKind'],
+  emptyContext?: string,
+) {
+  if (emptyKind === 'search') {
+    return {
+      kind: 'no-results' as const,
+      title: `No work items match “${emptyContext ?? 'your search'}”.`,
+      description: 'Try a broader search or clear the current query.',
+      primaryLabel: 'Clear search',
+    };
+  }
+  if (emptyKind === 'filters') {
+    return {
+      kind: 'no-results' as const,
+      title: 'No work items match the current filters.',
+      description: 'Clear one or more filters to broaden the queue scope.',
+      primaryLabel: 'Clear filters',
+    };
+  }
+  if (emptyKind === 'preset') {
+    return {
+      kind: 'no-results' as const,
+      title: 'No items currently match this Overview preset.',
+      description: 'The preset is valid, but nothing in the current queue matches it right now.',
+      primaryLabel: 'Clear preset',
+    };
+  }
+  if (emptyKind === 'segment') {
+    return {
+      kind: 'no-results' as const,
+      title: emptyContext === 'Cases' ? 'No cases match the current scope.' : 'No standalone alerts match the current scope.',
+      description: 'Adjust the current segment or broaden the queue scope.',
+    };
+  }
+  return {
+    kind: 'empty' as const,
+    title: 'No alerts or cases require attention.',
+    description: 'New work items will appear here when risks are detected.',
+  };
 }
 
 function cellStyle(column: ColumnDefinition, index: number, columns: ColumnDefinition[]) {

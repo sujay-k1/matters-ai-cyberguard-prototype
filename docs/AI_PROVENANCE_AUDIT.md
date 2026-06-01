@@ -5,6 +5,7 @@
 | Preview | Recommended next step | AI | `Suggested next step` provenance label | Yes | Build verified |
 | Preview | Grouping rationale | AI | `Correlation rationale` provenance label | Yes | Build verified |
 | Preview | Correlation suggestion | AI | `Correlation suggestion` provenance label | Yes | Build verified |
+| Preview | AI summary loading / unavailable | AI | Preserve `AILabel` while showing loading or unavailable state | Yes | Build verified |
 | Investigation summary | AI summary | AI | Existing `AILabel` summary marker | Yes | Build verified |
 | Investigation summary | Suggested checks | AI | `Suggested investigation checks` provenance label | Yes | Build verified |
 | Investigation summary | Open questions | AI | `Suggested open questions` provenance label | Yes | Build verified |
@@ -13,6 +14,7 @@
 | Alerts & evidence | Alert linking rationale | AI | `Correlation rationale` provenance label | Yes | Build verified |
 | Alerts & evidence | Evidence description | Normalized evidence | `Normalized evidence` label | Yes | Build verified |
 | Alerts & evidence | Raw JSON | Raw evidence | `Raw source record` label | Yes | Build verified |
+| Alerts & evidence | Raw record unavailable | Raw evidence unavailable | Explicit unavailable state without AI labeling | Yes | Build verified |
 | Alerts & evidence | Relevance verdict source | AI or Analyst | Subtle verdict-source line | Yes | Build verified |
 | Entities | Entity summary | AI | `Entity risk summary` provenance label | Yes | Build verified |
 | Entities | Suggested checks | AI | `Suggested checks` provenance label | Yes | Build verified |

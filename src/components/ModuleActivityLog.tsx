@@ -2,13 +2,28 @@ import { Dropdown, Search, Table, TableBody, TableCell, TableHead, TableHeader, 
 import { useMemo, useState } from 'react';
 import type { WorkflowActivityEvent } from '../types/investigation';
 import { ActivityEventDetailPanel } from './ActivityEventDetailPanel';
+import { OperationalState } from './OperationalState';
+import { TableLoadingState } from './TableLoadingState';
 
 interface ModuleActivityLogProps {
   events: WorkflowActivityEvent[];
   onOpenWorkItem: (itemId: string) => void;
+  loading?: boolean;
+  error?: boolean;
+  partial?: boolean;
+  noResults?: boolean;
+  onRetry?: () => void;
 }
 
-export function ModuleActivityLog({ events, onOpenWorkItem }: ModuleActivityLogProps) {
+export function ModuleActivityLog({
+  events,
+  onOpenWorkItem,
+  loading = false,
+  error = false,
+  partial = false,
+  noResults = false,
+  onRetry,
+}: ModuleActivityLogProps) {
   const [searchValue, setSearchValue] = useState('');
   const [actorType, setActorType] = useState('All actor types');
   const [actionType, setActionType] = useState('All actions');
@@ -41,8 +56,42 @@ export function ModuleActivityLog({ events, onOpenWorkItem }: ModuleActivityLogP
   );
   const selectedEvent = filtered.find((event) => event.id === selectedEventId) ?? events.find((event) => event.id === selectedEventId) ?? null;
 
+  const clearFilters = () => {
+    setSearchValue('');
+    setActorType('All actor types');
+    setActionType('All actions');
+    setItemType('All item types');
+    setSystem('All systems');
+    setResult('All results');
+    setTimeRange('All times');
+  };
+
+  if (loading) {
+    return <TableLoadingState columnCount={9} rowCount={8} />;
+  }
+
+  if (error) {
+    return (
+      <OperationalState
+        kind="error"
+        title="Unable to retrieve activity history."
+        description="The activity log could not be loaded."
+        primaryActionLabel="Retry"
+        onPrimaryAction={onRetry}
+      />
+    );
+  }
+
   return (
     <section className="cg-module-activity-log">
+      {partial ? (
+        <OperationalState
+          kind="partial"
+          compact
+          title="Some historical events could not be retrieved."
+          description="Showing available activity events."
+        />
+      ) : null}
       <div className="cg-investigation-toolbar">
         <Search id="module-activity-search" labelText="Search activity" placeholder="Search activity" value={searchValue} onChange={(event) => setSearchValue(event.currentTarget.value)} />
         <Dropdown id="module-activity-actor-type" titleText="" label="Actor type" items={actorTypes.map((entry) => ({ id: entry, label: entry }))} selectedItem={{ id: actorType, label: actorType }} itemToString={(item) => item?.label ?? ''} onChange={({ selectedItem }) => setActorType(selectedItem?.label ?? 'All actor types')} />
@@ -52,6 +101,21 @@ export function ModuleActivityLog({ events, onOpenWorkItem }: ModuleActivityLogP
         <Dropdown id="module-activity-result" titleText="" label="Result" items={results.map((entry) => ({ id: entry, label: entry }))} selectedItem={{ id: result, label: result }} itemToString={(item) => item?.label ?? ''} onChange={({ selectedItem }) => setResult(selectedItem?.label ?? 'All results')} />
         <Dropdown id="module-activity-time" titleText="" label="Time range" items={['All times', 'Latest activity only'].map((entry) => ({ id: entry, label: entry }))} selectedItem={{ id: timeRange, label: timeRange }} itemToString={(item) => item?.label ?? ''} onChange={({ selectedItem }) => setTimeRange(selectedItem?.label ?? 'All times')} />
       </div>
+      {!events.length ? (
+        <OperationalState
+          kind="empty"
+          title="No activity has been recorded yet."
+          description="Analyst and system events will appear here as workflows progress."
+        />
+      ) : noResults || !filtered.length ? (
+        <OperationalState
+          kind="no-results"
+          title="No activity events match the current filters."
+          description="Clear filters or search more broadly to restore activity history."
+          primaryActionLabel="Clear filters"
+          onPrimaryAction={clearFilters}
+        />
+      ) : (
       <div className="cg-investigation-table-shell">
         <Table size="sm">
           <TableHead>
@@ -84,6 +148,7 @@ export function ModuleActivityLog({ events, onOpenWorkItem }: ModuleActivityLogP
           </TableBody>
         </Table>
       </div>
+      )}
       <ActivityEventDetailPanel event={selectedEvent} onClose={() => setSelectedEventId(null)} onOpenWorkItem={onOpenWorkItem} />
     </section>
   );

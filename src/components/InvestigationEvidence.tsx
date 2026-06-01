@@ -1,6 +1,8 @@
 import { Button, Tag, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@carbon/react';
 import type { EvidenceItem, IncludedAlertItem } from '../types/investigation';
+import { OperationalState } from './OperationalState';
 import { ProvenanceLabel } from './ProvenanceLabel';
+import { SectionSkeleton } from './SectionSkeleton';
 
 interface InvestigationEvidenceProps {
   alerts: IncludedAlertItem[];
@@ -11,6 +13,12 @@ interface InvestigationEvidenceProps {
   onUpdateEvidenceVerdict: (id: string, next: EvidenceItem['verdict']) => void;
   onToggleEvidenceAttached: (id: string) => void;
   onAddNote: () => void;
+  loading?: boolean;
+  evidenceLoading?: boolean;
+  error?: boolean;
+  onRetry?: () => void;
+  onGoHunt?: () => void;
+  itemType?: 'case' | 'alert';
 }
 
 export function InvestigationEvidence({
@@ -22,7 +30,17 @@ export function InvestigationEvidence({
   onUpdateEvidenceVerdict,
   onToggleEvidenceAttached,
   onAddNote,
+  loading = false,
+  evidenceLoading = false,
+  error = false,
+  onRetry,
+  onGoHunt,
+  itemType = 'case',
 }: InvestigationEvidenceProps) {
+  if (loading) {
+    return <SectionSkeleton heading lines={2} cardCount={4} />;
+  }
+
   return (
     <div className="cg-investigation-tab-stack">
       <section className="cg-investigation-pane">
@@ -30,7 +48,15 @@ export function InvestigationEvidence({
           <h3>Included alerts</h3>
         </div>
         <div className="cg-investigation-card-list">
-          {alerts.map((alert) => (
+          {!alerts.length ? (
+            <OperationalState
+              kind="empty"
+              title={itemType === 'alert' ? 'This investigation currently contains one standalone alert.' : 'No alerts are currently attached to this case.'}
+              description={itemType === 'alert' ? 'Review evidence and related activity for this standalone alert.' : 'Attach additional related alerts or continue with direct evidence review.'}
+              primaryActionLabel={onGoHunt ? 'Go hunt' : undefined}
+              onPrimaryAction={onGoHunt}
+            />
+          ) : alerts.map((alert) => (
             <article key={alert.id} className="cg-investigation-card">
               <div className="cg-investigation-card__header">
                 <div>
@@ -90,6 +116,27 @@ export function InvestigationEvidence({
       <section className="cg-investigation-pane">
         <h3>Evidence items</h3>
         <ProvenanceLabel provenance="Normalized evidence" textLabel="Normalized evidence" compact />
+        {error ? (
+          <OperationalState
+            kind="error"
+            compact
+            title="Unable to retrieve evidence items."
+            description="Alert context remains available while evidence retrieval is retried."
+            primaryActionLabel="Retry"
+            onPrimaryAction={onRetry}
+          />
+        ) : evidenceLoading ? (
+          <SectionSkeleton lines={2} cardCount={3} />
+        ) : !evidence.length ? (
+          <OperationalState
+            kind="empty"
+            compact
+            title="No evidence items are attached yet."
+            description="Expand the investigation scope or attach hunt results."
+            primaryActionLabel={onGoHunt ? 'Go hunt' : undefined}
+            onPrimaryAction={onGoHunt}
+          />
+        ) : (
         <div className="cg-investigation-table-shell">
           <Table size="sm" useZebraStyles={false}>
             <TableHead>
@@ -120,6 +167,7 @@ export function InvestigationEvidence({
             </TableBody>
           </Table>
         </div>
+        )}
         <div className="cg-investigation-action-row">
           <Button kind="ghost" size="sm" onClick={onAddNote}>
             Add note

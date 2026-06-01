@@ -3,7 +3,10 @@ import type { InvestigationContext, InvestigationTask } from '../types/investiga
 import type { WorkItem } from '../types/queue';
 import type { DraftProvenance } from '../types/ai';
 import { AISuggestedTextArea } from './AISuggestedTextArea';
+import { InlineStateNotice } from './InlineStateNotice';
+import { OperationalState } from './OperationalState';
 import { ProvenanceLabel } from './ProvenanceLabel';
+import { SectionSkeleton } from './SectionSkeleton';
 import { buildAISuggestion, draftSourceLabel } from '../data/aiDraftSuggestions';
 
 interface InvestigationSummaryProps {
@@ -18,6 +21,8 @@ interface InvestigationSummaryProps {
   onOpenTaskAssignModal: (taskId: string) => void;
   onTabChange: (tab: 'evidence') => void;
   onQuickNoteProvenanceChange?: (value: DraftProvenance) => void;
+  aiSummaryState?: 'ready' | 'loading' | 'error';
+  emptyTasks?: boolean;
 }
 
 export function InvestigationSummary({
@@ -32,6 +37,8 @@ export function InvestigationSummary({
   onOpenTaskAssignModal,
   onTabChange,
   onQuickNoteProvenanceChange,
+  aiSummaryState = 'ready',
+  emptyTasks = false,
 }: InvestigationSummaryProps) {
   const { fixture } = context;
   const natureRows = item.preview.why_prioritized.map((entry, index) => {
@@ -62,11 +69,22 @@ export function InvestigationSummary({
               AILabelContent={<AILabelContent>Generated from the selected work item, correlated alerts, and investigation fixtures.</AILabelContent>}
             />
           </div>
-          <div className="cg-readable-copy cg-investigation-copy">
-            {fixture.summaryParagraphs.map((paragraph) => (
-              <p key={paragraph}>{paragraph}</p>
-            ))}
-          </div>
+          {aiSummaryState === 'loading' ? (
+            <SectionSkeleton lines={4} />
+          ) : aiSummaryState === 'error' ? (
+            <OperationalState
+              kind="unavailable"
+              compact
+              title="AI summary unavailable."
+              description="Review the timeline and evidence directly."
+            />
+          ) : (
+            <div className="cg-readable-copy cg-investigation-copy">
+              {fixture.summaryParagraphs.map((paragraph) => (
+                <p key={paragraph}>{paragraph}</p>
+              ))}
+            </div>
+          )}
         </section>
 
         <section className="cg-preview-block cg-investigation-panel">
@@ -91,7 +109,16 @@ export function InvestigationSummary({
           </div>
           <ProvenanceLabel provenance="AI" textLabel="Suggested investigation checks" compact />
           <div className="cg-investigation-task-list">
-            {tasks.map((task) => (
+            {emptyTasks ? (
+              <OperationalState
+                kind="empty"
+                compact
+                title="No investigation tasks yet."
+                description="Create the first task to capture the next analyst step."
+                primaryActionLabel="Add task"
+                onPrimaryAction={onOpenTaskModal}
+              />
+            ) : tasks.map((task) => (
               <div key={task.id} className="cg-investigation-task-row">
                 <Checkbox
                   id={task.id}
@@ -144,11 +171,20 @@ export function InvestigationSummary({
         <section className="cg-preview-block cg-investigation-panel">
           <h3>Open questions</h3>
           <ProvenanceLabel provenance="AI" textLabel="Suggested open questions" compact />
-          <ul className="cg-investigation-bullets">
-            {fixture.openQuestions.map((question) => (
-              <li key={question}>{question}</li>
-            ))}
-          </ul>
+          {fixture.openQuestions.length ? (
+            <ul className="cg-investigation-bullets">
+              {fixture.openQuestions.map((question) => (
+                <li key={question}>{question}</li>
+              ))}
+            </ul>
+          ) : (
+            <OperationalState
+              kind="empty"
+              compact
+              title="No unresolved questions are currently identified."
+              description="Continue investigation as new evidence emerges."
+            />
+          )}
         </section>
       </div>
 

@@ -180,3 +180,28 @@
 - Draft provenance is persisted when the analyst saves or submits content; suggestion visibility and `Tab` acceptance alone do not create audit events.
 - Activity detail surfaces now show saved draft provenance when relevant.
 - Known limitation: draft provenance is currently strongest on investigation, classification, resolution, escalation, and comment flows; narrower helper fields like tag editing and case rename intentionally remain analyst-only.
+
+## Operational state design pack
+
+- Added a reusable UI-state taxonomy in `src/types/uiState.ts` and a query-string-driven demo helper in `src/hooks/useDemoUIState.ts`.
+- Added Carbon-first shared state components:
+  - `OperationalState`
+  - `SectionSkeleton`
+  - `TableLoadingState`
+  - `InlineStateNotice`
+  - `SourceSystemStateModal`
+- The app now distinguishes:
+  - loading
+  - refreshing
+  - empty
+  - no-results
+  - unavailable
+  - partial
+  - error
+- Empty and no-results are intentionally different:
+  - empty means the underlying valid dataset has no records
+  - no-results means records exist, but search, filters, segment scope, or presets exclude them
+- Partial-data handling preserves the loaded parts of a surface instead of blanking the whole screen.
+- Source-system launch is routed through a deterministic modal instead of a bare toast so prototype-only, unavailable, permission, record, and timeout outcomes are explicit.
+- Queue, preview, investigation tabs, hunt, and module activity now support demo review presets without adding artificial delays to normal populated flows.
+- Known limitation: some submission-error and source-system review presets are best validated live in the browser because they depend on nested modal timing and overlay state.

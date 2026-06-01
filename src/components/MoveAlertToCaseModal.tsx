@@ -1,6 +1,7 @@
-import { Dropdown, Modal, TextInput } from '@carbon/react';
+import { Dropdown, InlineLoading, Modal, TextInput } from '@carbon/react';
 import { AISuggestedTextArea } from './AISuggestedTextArea';
 import type { DraftProvenance } from '../types/ai';
+import { InlineStateNotice } from './InlineStateNotice';
 
 interface MoveAlertToCaseModalProps {
   open: boolean;
@@ -10,6 +11,9 @@ interface MoveAlertToCaseModalProps {
   reason: string;
   destinationOptions: Array<{ id: string; label: string }>;
   reasonSuggestion?: string;
+  submitting?: boolean;
+  errorMessage?: string;
+  onRetry?: () => void;
   onDestinationChange: (value: string) => void;
   onReasonChange: (value: string) => void;
   onReasonProvenanceChange?: (value: DraftProvenance) => void;
@@ -25,6 +29,9 @@ export function MoveAlertToCaseModal({
   reason,
   destinationOptions,
   reasonSuggestion,
+  submitting = false,
+  errorMessage,
+  onRetry,
   onDestinationChange,
   onReasonChange,
   onReasonProvenanceChange,
@@ -36,14 +43,18 @@ export function MoveAlertToCaseModal({
       open={open}
       className="cg-investigation-submodal"
       modalHeading="Move alert to another case"
-      primaryButtonText="Move alert"
+      primaryButtonText={submitting ? 'Moving alert…' : 'Move alert'}
       secondaryButtonText="Cancel"
-      primaryButtonDisabled={!destinationCaseId || !reason.trim()}
+      primaryButtonDisabled={submitting || !destinationCaseId || !reason.trim()}
       selectorPrimaryFocus="#move-alert-reason"
       onRequestClose={onClose}
       onRequestSubmit={onSubmit}
     >
       <div className="cg-dialog-stack">
+        {submitting ? <InlineLoading description="Moving alert…" /> : null}
+        {errorMessage ? (
+          <InlineStateNotice kind="error" title="Alert move failed." subtitle={errorMessage} actionLabel="Retry" onAction={onRetry} />
+        ) : null}
         <TextInput id="move-alert-id" labelText="Alert ID" value={alertId} readOnly />
         <TextInput id="move-alert-current-case" labelText="Current case" value={currentCaseLabel} readOnly />
         <Dropdown

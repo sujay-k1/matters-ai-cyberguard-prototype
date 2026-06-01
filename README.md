@@ -97,6 +97,13 @@ https://github.com/sujay-k1/matters-ai-cyberguard-prototype
 - Resolve-with-exception, escalation, and approval flows are prototype-only governance interactions
 - Stitch references were used read-only and did not include dedicated filter-open or bulk-selection screens
 
+## Operational UI states
+
+- Major surfaces now distinguish loading, refreshing, empty, no-results, unavailable, partial-data, and error states.
+- Review presets are deterministic and local-only; no backend requests or artificial delays are used for normal workflows.
+- Refresh states preserve populated content where practical, while error and unavailable states keep a clear recovery action visible.
+- Source-system launch actions route through a dedicated modal with prototype-only, unavailable, permission-denied, record-unavailable, and timeout variants.
+
 ## AI provenance and AI-assisted drafting
 
 - AI-authored interpretation is now labeled explicitly instead of being blended with deterministic analytics or evidence.
@@ -114,3 +121,49 @@ Additional review states:
 - `/?state=ai-suggestion-approval`
 - `/?state=system-derived-baseline`
 - `/?state=system-derived-containment`
+- `/?state=queue-loading`
+- `/?state=queue-refreshing`
+- `/?state=queue-empty`
+- `/?state=queue-no-results`
+- `/?state=queue-error`
+- `/?state=filter-no-results`
+- `/?state=overview-loading`
+- `/?state=overview-empty`
+- `/?state=overview-partial-error`
+- `/?state=preview-loading`
+- `/?state=preview-ai-loading`
+- `/?state=preview-ai-error`
+- `/?state=investigation-loading`
+- `/?state=investigation-error`
+- `/?state=investigation-partial`
+- `/?state=summary-ai-loading`
+- `/?state=summary-ai-error`
+- `/?state=summary-empty-tasks`
+- `/?state=timeline-loading`
+- `/?state=timeline-empty`
+- `/?state=timeline-no-results`
+- `/?state=timeline-error`
+- `/?state=evidence-loading`
+- `/?state=evidence-empty`
+- `/?state=evidence-error`
+- `/?state=entities-loading`
+- `/?state=entities-empty`
+- `/?state=baseline-error`
+- `/?state=actions-loading`
+- `/?state=actions-empty`
+- `/?state=containment-error`
+- `/?state=activity-empty`
+- `/?state=activity-no-results`
+- `/?state=activity-error`
+- `/?state=hunt-loading`
+- `/?state=hunt-empty`
+- `/?state=hunt-no-results`
+- `/?state=hunt-error`
+- `/?state=source-system-info`
+- `/?state=source-system-error`
+- `/?state=source-system-permission-denied`
+- `/?state=source-system-record-unavailable`
+- `/?state=source-system-timeout`
+- `/?state=approval-submit-error`
+- `/?state=escalation-submit-error`
+- `/?state=resolution-submit-error`

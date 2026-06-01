@@ -1,6 +1,8 @@
 import { Button, Tag } from '@carbon/react';
 import { useState } from 'react';
 import type { InvestigationEntity } from '../types/investigation';
+import { OperationalState } from './OperationalState';
+import { SectionSkeleton } from './SectionSkeleton';
 
 interface InvestigationEntitiesProps {
   entities: InvestigationEntity[];
@@ -8,6 +10,8 @@ interface InvestigationEntitiesProps {
   onGoHunt: () => void;
   onAddNote: () => void;
   onCompareBaseline: (id: string) => void;
+  loading?: boolean;
+  empty?: boolean;
 }
 
 export function InvestigationEntities({
@@ -16,8 +20,14 @@ export function InvestigationEntities({
   onGoHunt,
   onAddNote,
   onCompareBaseline,
+  loading = false,
+  empty = false,
 }: InvestigationEntitiesProps) {
   const [viewMode, setViewMode] = useState<'list' | 'relationship'>('list');
+
+  if (loading) {
+    return <SectionSkeleton heading lines={2} cardCount={4} />;
+  }
 
   return (
     <div className="cg-investigation-tab-stack">
@@ -35,7 +45,7 @@ export function InvestigationEntities({
         </div>
 
         {viewMode === 'relationship' ? (
-          <>
+          entities.length ? (
             <div className="cg-investigation-relationship-summary">
               {entities.map((entity) => (
                 <div key={entity.id} className="cg-investigation-chip-row">
@@ -44,10 +54,25 @@ export function InvestigationEntities({
                 </div>
               ))}
             </div>
-          </>
+          ) : (
+            <OperationalState
+              kind="empty"
+              compact
+              title="Relationship view will appear after related entities are identified."
+              description="Use hunt or evidence review to expand the current entity scope."
+            />
+          )
         ) : (
           <div className="cg-investigation-card-list">
-            {entities.map((entity) => (
+            {empty || !entities.length ? (
+              <OperationalState
+                kind="empty"
+                title="No entities or assets have been identified yet."
+                description="Related entities will appear after telemetry and evidence are expanded."
+                primaryActionLabel="Go hunt"
+                onPrimaryAction={onGoHunt}
+              />
+            ) : entities.map((entity) => (
               <article key={entity.id} className="cg-investigation-card">
                 <div className="cg-investigation-card__header">
                   <div>
