@@ -9,7 +9,16 @@ import {
   OverflowMenuItem,
   Tag,
 } from '@carbon/react';
-import { Close, WarningAlt } from '@carbon/icons-react';
+import {
+  Close,
+  Data_1,
+  FlowStreamReference,
+  MachineLearning,
+  Task,
+  Time,
+  UserAvatar,
+  WarningAlt,
+} from '@carbon/icons-react';
 import type { WorkItem } from '../types/queue';
 
 type DrawerSection =
@@ -115,6 +124,21 @@ export function PreviewDrawer({
       : item.item_type === 'case'
         ? 'Correlated multi-signal case'
         : item.actor_entity_type;
+  const natureTitle = item.item_type === 'case' ? 'Nature of case' : 'Nature of alert';
+  const natureRows = preview.why_prioritized.slice(0, 5).map((entry, index) => {
+    const parts = entry.split(':');
+    if (parts.length > 1) {
+      return {
+        label: parts[0].trim(),
+        value: parts.slice(1).join(':').trim(),
+      };
+    }
+
+    return {
+      label: `Signal ${index + 1}`,
+      value: entry,
+    };
+  });
 
   return (
     <aside className="cg-preview-drawer" aria-label="Item preview" tabIndex={-1}>
@@ -138,57 +162,66 @@ export function PreviewDrawer({
             <Close size={16} />
           </button>
         </div>
-
-        <div className="cg-preview-heading">
-          <h2>{preview.identity_and_urgency.title}</h2>
-          <p className="cg-preview-subtitle">{actorLine}</p>
-        </div>
-
-        <dl className="cg-preview-header-grid">
-          <div>
-            <dt>
-              <span>Status</span>
-              <Button kind="ghost" size="sm" onClick={onChangeStatus}>
-                Change
-              </Button>
-            </dt>
-            <dd>
-              <span>{item.status}</span>
-            </dd>
-          </div>
-          <div>
-            <dt>
-              <span>Assignee</span>
-              <Button kind="ghost" size="sm" onClick={showAssignToMe ? onAssignToMe : onReassign}>
-                {showAssignToMe ? 'Assign to me' : 'Reassign'}
-              </Button>
-            </dt>
-            <dd>
-              <span>{item.assignee}</span>
-            </dd>
-          </div>
-          <div>
-            <dt>SLA</dt>
-            <dd>{item.sla}</dd>
-          </div>
-          {showContainmentInHeader ? (
-            <div>
-              <dt>Containment</dt>
-              <dd>{preview.containment_state}</dd>
-            </div>
-          ) : null}
-        </dl>
       </header>
 
       <div className="cg-preview-body">
+        <section className="cg-preview-intro">
+          <div className="cg-preview-heading">
+            <h2>{preview.identity_and_urgency.title}</h2>
+            <p className="cg-preview-subtitle">{actorLine}</p>
+          </div>
+
+          <dl className="cg-preview-header-grid">
+            <div>
+              <dt>
+                <Task size={14} />
+                <span>Status</span>
+                <Button kind="ghost" size="sm" onClick={onChangeStatus}>
+                  Change
+                </Button>
+              </dt>
+              <dd>
+                <span>{item.status}</span>
+              </dd>
+            </div>
+            <div>
+              <dt>
+                <UserAvatar size={14} />
+                <span>Assignee</span>
+                <Button kind="ghost" size="sm" onClick={showAssignToMe ? onAssignToMe : onReassign}>
+                  {showAssignToMe ? 'Assign to me' : 'Reassign'}
+                </Button>
+              </dt>
+              <dd>
+                <span>{item.assignee}</span>
+              </dd>
+            </div>
+            <div>
+              <dt>
+                <Time size={14} />
+                <span>SLA</span>
+              </dt>
+              <dd>{item.sla}</dd>
+            </div>
+            {showContainmentInHeader ? (
+              <div>
+                <dt>
+                  <WarningAlt size={14} />
+                  <span>Containment</span>
+                </dt>
+                <dd>{preview.containment_state}</dd>
+              </div>
+            ) : null}
+          </dl>
+        </section>
+
         <section className="cg-triage-brief">
-          <PreviewBlock title="AI summary" hideTitle>
+          <PreviewBlock title="AI summary" hideTitle className="cg-ai-layer cg-ai-layer--primary">
             <div className="cg-ai-heading">
               <AILabel
                 kind="inline"
                 size="sm"
-                aiTextLabel="AI"
-                textLabel="AI summary"
+                textLabel="Summary"
                 aria-label="AI summary details"
                 AILabelContent={<AILabelContent>Generated using current alert and case context.</AILabelContent>}
               />
@@ -196,15 +229,18 @@ export function PreviewDrawer({
             <p className="cg-readable-copy">{preview.ai_summary}</p>
           </PreviewBlock>
 
-          <PreviewBlock title="Why this is prioritized">
-            <ul className="cg-compact-list">
-              {preview.why_prioritized.slice(0, 5).map((entry) => (
-                <li key={entry}>{entry}</li>
+          <PreviewBlock title={natureTitle}>
+            <dl className="cg-quick-facts-grid">
+              {natureRows.map((row) => (
+                <div key={`${row.label}-${row.value}`}>
+                  <dt>{row.label}</dt>
+                  <dd>{row.value}</dd>
+                </div>
               ))}
-            </ul>
+            </dl>
           </PreviewBlock>
 
-          <PreviewBlock title="Recommended next step" accent>
+          <PreviewBlock title="Recommended next step" accent icon={<Task size={16} />}>
             <p>{preview.recommended_next_action}</p>
           </PreviewBlock>
 
@@ -220,7 +256,7 @@ export function PreviewDrawer({
           </PreviewBlock>
 
           {lowConfidenceNeedsCaution ? (
-            <div className="cg-preview-warning">
+            <div className="cg-preview-warning cg-ai-layer cg-ai-layer--warning">
               <WarningAlt size={16} />
               <div>
                 <strong>Validation required</strong>
@@ -241,7 +277,7 @@ export function PreviewDrawer({
             onHeadingClick={() => toggleSection(setOpenSections, 'scope')}
           >
             <div className="cg-preview-subgroup">
-              <h4>Systems and resources</h4>
+              <h4><FlowStreamReference size={14} /> Systems and resources</h4>
               <ul className="cg-entity-list">
                 {preview.affected_systems_resources.map((entry) => (
                   <li key={entry}>{entry}</li>
@@ -249,7 +285,7 @@ export function PreviewDrawer({
               </ul>
             </div>
             <div className="cg-preview-subgroup">
-              <h4>Actors and entities</h4>
+              <h4><UserAvatar size={14} /> Actors and entities</h4>
               <ul className="cg-entity-list">
                 {preview.actors_entities.map((entry) => (
                   <li key={entry}>{entry}</li>
@@ -257,7 +293,7 @@ export function PreviewDrawer({
               </ul>
             </div>
             <div className="cg-preview-subgroup">
-              <h4>Affected data</h4>
+              <h4><Data_1 size={14} /> Affected data</h4>
               <p>{preview.affected_data}</p>
             </div>
           </AccordionItem>
@@ -274,7 +310,7 @@ export function PreviewDrawer({
                 </p>
               </div>
               <div className="cg-preview-subgroup">
-                <h4>Grouping rationale</h4>
+                <h4><MachineLearning size={14} /> Grouping rationale</h4>
                 <p>{preview.grouping_rationale}</p>
               </div>
               <div className="cg-preview-subgroup">
@@ -307,12 +343,11 @@ export function PreviewDrawer({
               <p>{preview.correlation_status || 'No related alerts identified yet.'}</p>
               {relatedAlertSuggestion ? (
                 <div className="cg-inline-actions">
-                  <div className="cg-ai-inline-note">
+                  <div className="cg-ai-inline-note cg-ai-layer cg-ai-layer--secondary">
                     <AILabel
                       kind="inline"
                       size="sm"
-                      aiTextLabel="AI"
-                      textLabel="AI identified possible related alerts"
+                      textLabel="Related alerts identified"
                       aria-label="AI related alerts note"
                       AILabelContent={<AILabelContent>Use this suggestion as triage guidance before consolidating alerts.</AILabelContent>}
                     />
@@ -337,17 +372,16 @@ export function PreviewDrawer({
             open={openSections.intelligence}
             onHeadingClick={() => toggleSection(setOpenSections, 'intelligence')}
           >
-            <div className="cg-ai-heading cg-ai-heading--section">
+            <div className="cg-ai-heading cg-ai-heading--section cg-ai-layer cg-ai-layer--secondary">
               <AILabel
                 kind="inline"
                 size="sm"
-                aiTextLabel="AI"
-                textLabel="AI assessment"
+                textLabel="Assessment"
                 aria-label="AI assessment details"
                 AILabelContent={<AILabelContent>Confidence and verdict are advisory inputs for triage.</AILabelContent>}
               />
             </div>
-            <dl className="cg-definition-list">
+            <dl className="cg-definition-list cg-ai-layer cg-ai-layer--secondary cg-ai-layer--dense">
               <div>
                 <dt>AI verdict</dt>
                 <dd>{preview.ai_assessment.verdict}</dd>
@@ -407,7 +441,7 @@ export function PreviewDrawer({
               ) : null}
               <div>
                 <dt>Stable ID</dt>
-                <dd>{item.id}</dd>
+                <dd><span className="cg-mono">{item.id}</span></dd>
               </div>
             </dl>
           </AccordionItem>
@@ -449,16 +483,25 @@ function PreviewBlock({
   title,
   accent = false,
   hideTitle = false,
+  className,
+  icon,
   children,
 }: {
   title: string;
   accent?: boolean;
   hideTitle?: boolean;
+  className?: string;
+  icon?: ReactNode;
   children: ReactNode;
 }) {
   return (
-    <section className={`cg-preview-block${accent ? ' is-accent' : ''}`}>
-      {!hideTitle ? <h3>{title}</h3> : null}
+    <section className={`cg-preview-block${accent ? ' is-accent' : ''}${className ? ` ${className}` : ''}`}>
+      {!hideTitle ? (
+        <h3>
+          {icon ? <span className="cg-section-icon">{icon}</span> : null}
+          <span>{title}</span>
+        </h3>
+      ) : null}
       {children}
     </section>
   );
@@ -492,6 +535,7 @@ function summarizeSystems(systems: string[]) {
   if (systems.length <= 3) return systems.join(', ');
   return `${systems.slice(0, 3).join(', ')} +${systems.length - 3} more`;
 }
+
 
 function toggleSection(
   setOpenSections: Dispatch<SetStateAction<Record<DrawerSection, boolean>>>,
