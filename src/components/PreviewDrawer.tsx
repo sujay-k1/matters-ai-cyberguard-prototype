@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState, type Dispatch, type ReactNode, type SetSt
 import {
   Accordion,
   AccordionItem,
+  AILabel,
+  AILabelContent,
   Button,
   OverflowMenu,
   OverflowMenuItem,
@@ -117,46 +119,52 @@ export function PreviewDrawer({
   return (
     <aside className="cg-preview-drawer" aria-label="Item preview" tabIndex={-1}>
       <header className="cg-preview-header">
-        <button
-          type="button"
-          className="cg-icon-action cg-preview-close"
-          onClick={onClose}
-          aria-label="Close preview"
-        >
-          <Close size={16} />
-        </button>
+        <div className="cg-preview-sticky-bar">
+          <div className="cg-preview-sticky-meta">
+            <Tag type={item.item_type === 'case' ? 'purple' : 'cyan'}>
+              {item.item_type === 'case' ? 'Case' : 'Alert'}
+            </Tag>
+            <span className="cg-mono">{preview.identity_and_urgency.id}</span>
+            <Tag type={severityTagType(severityLabel)}>{severityLabel}</Tag>
+            <span className="cg-preview-priority">{item.priority}</span>
+            {severityWasOverridden ? <Tag type="outline">Analyst override</Tag> : null}
+          </div>
+          <button
+            type="button"
+            className="cg-icon-action cg-preview-close"
+            onClick={onClose}
+            aria-label="Close preview"
+          >
+            <Close size={16} />
+          </button>
+        </div>
 
         <div className="cg-preview-heading">
-          <p className="cg-eyebrow">
-            {item.item_type.toUpperCase()} · {preview.identity_and_urgency.id}
-          </p>
           <h2>{preview.identity_and_urgency.title}</h2>
           <p className="cg-preview-subtitle">{actorLine}</p>
         </div>
 
-        <div className="cg-preview-scan-badges">
-          <Tag type={severityTagType(severityLabel)}>{severityLabel}</Tag>
-          <Tag type="gray">{item.priority}</Tag>
-          {severityWasOverridden ? <Tag type="outline">Analyst override</Tag> : null}
-        </div>
-
         <dl className="cg-preview-header-grid">
           <div>
-            <dt>Status</dt>
-            <dd>
-              <span>{item.status}</span>
-              <Button kind="tertiary" size="sm" onClick={onChangeStatus}>
+            <dt>
+              <span>Status</span>
+              <Button kind="ghost" size="sm" onClick={onChangeStatus}>
                 Change
               </Button>
+            </dt>
+            <dd>
+              <span>{item.status}</span>
             </dd>
           </div>
           <div>
-            <dt>Assignee</dt>
-            <dd>
-              <span>{item.assignee}</span>
-              <Button kind="tertiary" size="sm" onClick={showAssignToMe ? onAssignToMe : onReassign}>
+            <dt>
+              <span>Assignee</span>
+              <Button kind="ghost" size="sm" onClick={showAssignToMe ? onAssignToMe : onReassign}>
                 {showAssignToMe ? 'Assign to me' : 'Reassign'}
               </Button>
+            </dt>
+            <dd>
+              <span>{item.assignee}</span>
             </dd>
           </div>
           <div>
@@ -174,7 +182,17 @@ export function PreviewDrawer({
 
       <div className="cg-preview-body">
         <section className="cg-triage-brief">
-          <PreviewBlock title="AI summary">
+          <PreviewBlock title="AI summary" hideTitle>
+            <div className="cg-ai-heading">
+              <AILabel
+                kind="inline"
+                size="sm"
+                aiTextLabel="AI"
+                textLabel="AI summary"
+                aria-label="AI summary details"
+                AILabelContent={<AILabelContent>Generated using current alert and case context.</AILabelContent>}
+              />
+            </div>
             <p className="cg-readable-copy">{preview.ai_summary}</p>
           </PreviewBlock>
 
@@ -289,7 +307,16 @@ export function PreviewDrawer({
               <p>{preview.correlation_status || 'No related alerts identified yet.'}</p>
               {relatedAlertSuggestion ? (
                 <div className="cg-inline-actions">
-                  <p className="cg-summary-line">AI identified possible related alerts.</p>
+                  <div className="cg-ai-inline-note">
+                    <AILabel
+                      kind="inline"
+                      size="sm"
+                      aiTextLabel="AI"
+                      textLabel="AI identified possible related alerts"
+                      aria-label="AI related alerts note"
+                      AILabelContent={<AILabelContent>Use this suggestion as triage guidance before consolidating alerts.</AILabelContent>}
+                    />
+                  </div>
                   <div>
                     <Button kind="ghost" size="sm" onClick={onReviewRelatedAlerts}>
                       Review related alerts
@@ -310,6 +337,16 @@ export function PreviewDrawer({
             open={openSections.intelligence}
             onHeadingClick={() => toggleSection(setOpenSections, 'intelligence')}
           >
+            <div className="cg-ai-heading cg-ai-heading--section">
+              <AILabel
+                kind="inline"
+                size="sm"
+                aiTextLabel="AI"
+                textLabel="AI assessment"
+                aria-label="AI assessment details"
+                AILabelContent={<AILabelContent>Confidence and verdict are advisory inputs for triage.</AILabelContent>}
+              />
+            </div>
             <dl className="cg-definition-list">
               <div>
                 <dt>AI verdict</dt>
@@ -411,15 +448,17 @@ export function PreviewDrawer({
 function PreviewBlock({
   title,
   accent = false,
+  hideTitle = false,
   children,
 }: {
   title: string;
   accent?: boolean;
+  hideTitle?: boolean;
   children: ReactNode;
 }) {
   return (
     <section className={`cg-preview-block${accent ? ' is-accent' : ''}`}>
-      <h3>{title}</h3>
+      {!hideTitle ? <h3>{title}</h3> : null}
       {children}
     </section>
   );
