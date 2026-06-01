@@ -63,6 +63,17 @@
   - hunt-result attachment
   - module-level Activity Log aggregation
   - Overview metrics
+- Fixed a stale React snapshot overwrite where sequential workspace writes could compute from the same older workspace state
+- `updateWorkspaceState` now derives from the latest item and workspace refs before applying the updater, which makes rapid sequential interactions safer without changing the local-only architecture
+- `InvestigationWorkspaceModal` now uses an atomic workspace-mutation helper so domain updates and workspace activity entries are committed in one workspace write
+- Refactored persistence-sensitive handlers to use atomic mutation:
+  - notes
+  - task add / complete / reassignment
+  - analyst hypothesis
+  - response-action transitions
+  - hunt-result attachment
+- Derived containment was revalidated against the updated action list so action-state transitions can move cards between grouped sections while keeping containment, queue sync, preview sync, and investigation-header sync consistent
+- Regression scenarios for the action-state bug and related persistence paths are tracked in `docs/STATE_TRANSITION_QA.md`
 
 ## Preview drawer refinements
 
@@ -131,6 +142,7 @@
 ## Known limitations
 
 - Query-string presets initialize core states, but deeper visual QA still benefits from manual browser review
+- The action-state integrity fix is in place, but full browser walkthrough verification is still recommended for every documented regression scenario
 - Segment counts are driven by the JSON-backed prototype state rather than hard-coded Stitch screenshot totals
 - The build emits large bundle warnings because Carbon styles and components are included in one bundle for speed
 - No automated screenshot capture was produced in this environment

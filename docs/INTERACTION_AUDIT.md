@@ -65,7 +65,12 @@
 | Entity detail | Add note | Open note modal | Implemented | Pass |
 | Entity detail | Evidence links | Open evidence from related activity | Implemented | Pass |
 | Actions | View details | Open action detail dialog | Implemented | Pass |
-| Actions | Request approval / Approve / Reject / Start / Complete / Fail / Retry / Cancel | Follow valid state transitions only | Implemented | Pass |
+| Actions | Request approval / Approve / Reject / Start / Complete / Fail / Retry / Cancel | Follow valid state transitions only | Implemented | Needs live QA after atomic state-transition fix |
+| Summary | Add note persistence | Save note without losing workspace activity | Implemented | Needs live QA after atomic state-transition fix |
+| Summary | Add task persistence | Save task without losing workspace activity | Implemented | Needs live QA after atomic state-transition fix |
+| Timeline | Attach / detach persistence | Synchronize timeline and evidence attachment without stale overwrite | Implemented | Needs live QA after atomic state-transition fix |
+| Evidence detail | Attach / detach persistence | Synchronize evidence and timeline state without stale overwrite | Implemented | Needs live QA after atomic state-transition fix |
+| Actions | Hunt attachment persistence | Hunt result attaches evidence, timeline, and activity in one mutation | Implemented | Needs live QA after atomic state-transition fix |
 | Actions | Escalate | Open escalation modal or escalate from failed action | Implemented | Pass |
 | Activity Log | Filters | Filter by search, actor type, action type, item type, system, result, time | Implemented | Pass |
 | Activity Log | Row detail | Open activity detail dialog | Implemented | Pass |

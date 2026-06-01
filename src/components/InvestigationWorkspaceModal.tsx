@@ -212,6 +212,20 @@ export function InvestigationWorkspaceModal({
     }));
   };
 
+  const patchWorkspaceWithActivity = (
+    updater: (current: InvestigationWorkspaceState) => InvestigationWorkspaceState,
+    activityEntry: InvestigationActivityItem,
+    options?: { logContainmentChange?: boolean },
+  ) => {
+    patchWorkspace((current) => {
+      const next = updater(current);
+      return {
+        ...next,
+        activity: [activityEntry, ...next.activity],
+      };
+    }, options);
+  };
+
   const addNote = (text: string) => {
     const note = {
       id: `note-${Date.now()}`,
@@ -219,38 +233,41 @@ export function InvestigationWorkspaceModal({
       timestamp: 'Just now',
       text: text.trim(),
     };
-    patchWorkspace((current) => ({
-      ...current,
-      notes: [note, ...current.notes],
-    }));
-    appendActivity(makeActivityEntry(currentAnalyst, 'Analyst', 'Comment added', note.text));
+    patchWorkspaceWithActivity(
+      (current) => ({
+        ...current,
+        notes: [note, ...current.notes],
+      }),
+      makeActivityEntry(currentAnalyst, 'Analyst', 'Comment added', note.text),
+    );
     onToast('success', 'Note added', `Added a note to ${item.id}.`);
   };
 
   const handleToggleTask = (taskId: string) => {
     const task = workspace.tasks.find((entry) => entry.id === taskId);
-    patchWorkspace((current) => ({
-      ...current,
-      tasks: current.tasks.map((entry) => (entry.id === taskId ? { ...entry, completed: !entry.completed } : entry)),
-    }));
-    if (task) {
-      appendActivity(
-        makeActivityEntry(
-          currentAnalyst,
-          'Analyst',
-          task.completed ? 'Task reopened' : 'Task completed',
-          task.title,
-        ),
-      );
-    }
+    if (!task) return;
+    patchWorkspaceWithActivity(
+      (current) => ({
+        ...current,
+        tasks: current.tasks.map((entry) => (entry.id === taskId ? { ...entry, completed: !entry.completed } : entry)),
+      }),
+      makeActivityEntry(
+        currentAnalyst,
+        'Analyst',
+        task.completed ? 'Task reopened' : 'Task completed',
+        task.title,
+      ),
+    );
   };
 
   const handleSaveHypothesis = () => {
-    patchWorkspace((current) => ({
-      ...current,
-      hypothesis: hypothesisDraft.trim(),
-    }));
-    appendActivity(makeActivityEntry(currentAnalyst, 'Analyst', 'Hypothesis updated', hypothesisDraft.trim()));
+    patchWorkspaceWithActivity(
+      (current) => ({
+        ...current,
+        hypothesis: hypothesisDraft.trim(),
+      }),
+      makeActivityEntry(currentAnalyst, 'Analyst', 'Hypothesis updated', hypothesisDraft.trim()),
+    );
     setHypothesisModalOpen(false);
     onToast('success', 'Hypothesis saved', `Updated the current hypothesis for ${item.id}.`);
   };
@@ -262,11 +279,13 @@ export function InvestigationWorkspaceModal({
       owner: taskOwnerDraft,
       completed: false,
     };
-    patchWorkspace((current) => ({
-      ...current,
-      tasks: [nextTask, ...current.tasks],
-    }));
-    appendActivity(makeActivityEntry(currentAnalyst, 'Analyst', 'Task added', nextTask.title, { newValue: nextTask.owner }));
+    patchWorkspaceWithActivity(
+      (current) => ({
+        ...current,
+        tasks: [nextTask, ...current.tasks],
+      }),
+      makeActivityEntry(currentAnalyst, 'Analyst', 'Task added', nextTask.title, { newValue: nextTask.owner }),
+    );
     setTaskModalOpen(false);
     setTaskTitleDraft('');
     setTaskOwnerDraft(currentAnalyst);
@@ -277,11 +296,11 @@ export function InvestigationWorkspaceModal({
     if (!taskAssignTargetId || !taskOwnerDraft.trim()) return;
     const task = workspace.tasks.find((entry) => entry.id === taskAssignTargetId);
     if (!task) return;
-    patchWorkspace((current) => ({
-      ...current,
-      tasks: current.tasks.map((entry) => (entry.id === taskAssignTargetId ? { ...entry, owner: taskOwnerDraft } : entry)),
-    }));
-    appendActivity(
+    patchWorkspaceWithActivity(
+      (current) => ({
+        ...current,
+        tasks: current.tasks.map((entry) => (entry.id === taskAssignTargetId ? { ...entry, owner: taskOwnerDraft } : entry)),
+      }),
       makeActivityEntry(currentAnalyst, 'Analyst', 'Task owner changed', task.title, {
         previousValue: task.owner,
         newValue: taskOwnerDraft,
@@ -408,7 +427,11 @@ export function InvestigationWorkspaceModal({
   };
 
   const updateActionState = (actionId: string, next: ResponseActionState, note?: string, extras?: Partial<InvestigationResponseAction>) => {
-    patchWorkspace(
+    const activityEntry = makeActivityEntry(currentAnalyst, 'Analyst', 'Action state updated', `${actionId} moved to ${next}.`, {
+      comment: note,
+      newValue: next,
+    });
+    patchWorkspaceWithActivity(
       (current) => ({
         ...current,
         actions: current.actions.map((action) =>
@@ -419,19 +442,14 @@ export function InvestigationWorkspaceModal({
                 currentState: next,
                 note,
                 auditTimestamp: 'Just now',
-                history: [
-                  ...(action.history ?? []),
-                  makeActivityEntry(currentAnalyst, 'Analyst', 'Action state updated', `${action.id} moved to ${next}.`, {
-                    comment: note,
-                  }),
-                ],
+                history: [...(action.history ?? []), activityEntry],
               }
             : action,
         ),
       }),
+      activityEntry,
       { logContainmentChange: true },
     );
-    appendActivity(makeActivityEntry(currentAnalyst, 'Analyst', 'Action state updated', `${actionId} moved to ${next}.`, { comment: note, newValue: next }));
     onToast('success', 'Action updated', `${actionId} moved to ${next}.`);
   };
 
@@ -496,46 +514,48 @@ export function InvestigationWorkspaceModal({
   const attachSelectedHuntResults = () => {
     const selectedResults = workspace.huntResults.filter((result) => selectedHuntIds.includes(result.id));
     if (!selectedResults.length) return;
-    patchWorkspace((current) => ({
-      ...current,
-      huntResults: current.huntResults.map((result) =>
-        selectedHuntIds.includes(result.id) ? { ...result, attached: true } : result,
-      ),
-      evidence: [
-        ...selectedResults.map((result) => ({
-          id: `HUNT-${result.id}`,
-          eventType: result.type,
-          timestamp: result.timestamp,
-          sourceSystem: result.sourceSystem,
-          entity: result.entity,
-          description: result.description,
-          rawRecordAvailable: false,
-          verdict: 'Needs review' as const,
-          attached: true,
-          details: [result.title],
-        })),
-        ...current.evidence,
-      ],
-      timeline: [
-        ...selectedResults.map((result) => ({
-          id: `hunt-timeline-${result.id}`,
-          occurredAt: new Date('2026-06-01T22:24:00.000Z').toISOString(),
-          timestamp: result.timestamp,
-          category: 'Hunt result',
-          systemName: result.sourceSystem,
-          title: result.title,
-          description: result.description,
-          relatedAlert: item.id,
-          entity: result.entity,
-          relevance: 'Needs review' as const,
-          details: [result.description],
-          evidenceId: `HUNT-${result.id}`,
-          attached: true,
-        })),
-        ...current.timeline,
-      ],
-    }));
-    appendActivity(makeActivityEntry(currentAnalyst, 'Analyst', 'Hunt results attached', `${selectedResults.length} hunt results attached to ${item.id}.`));
+    patchWorkspaceWithActivity(
+      (current) => ({
+        ...current,
+        huntResults: current.huntResults.map((result) =>
+          selectedHuntIds.includes(result.id) ? { ...result, attached: true } : result,
+        ),
+        evidence: [
+          ...selectedResults.map((result) => ({
+            id: `HUNT-${result.id}`,
+            eventType: result.type,
+            timestamp: result.timestamp,
+            sourceSystem: result.sourceSystem,
+            entity: result.entity,
+            description: result.description,
+            rawRecordAvailable: false,
+            verdict: 'Needs review' as const,
+            attached: true,
+            details: [result.title],
+          })),
+          ...current.evidence,
+        ],
+        timeline: [
+          ...selectedResults.map((result) => ({
+            id: `hunt-timeline-${result.id}`,
+            occurredAt: new Date('2026-06-01T22:24:00.000Z').toISOString(),
+            timestamp: result.timestamp,
+            category: 'Hunt result',
+            systemName: result.sourceSystem,
+            title: result.title,
+            description: result.description,
+            relatedAlert: item.id,
+            entity: result.entity,
+            relevance: 'Needs review' as const,
+            details: [result.description],
+            evidenceId: `HUNT-${result.id}`,
+            attached: true,
+          })),
+          ...current.timeline,
+        ],
+      }),
+      makeActivityEntry(currentAnalyst, 'Analyst', 'Hunt results attached', `${selectedResults.length} hunt results attached to ${item.id}.`),
+    );
     setSelectedHuntIds([]);
     setHuntOpen(false);
     onToast('success', 'Hunt results attached', `${selectedResults.length} related findings were attached to the case.`);

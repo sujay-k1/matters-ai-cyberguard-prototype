@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { buildInvestigationContext, createWorkspaceStateFromFixture } from '../data/investigationFixtures';
 import type {
   ClassificationRecord,
@@ -23,10 +23,20 @@ export function useWorkflowState(baseItems: WorkItem[], currentAnalyst: string) 
   const [items, setItems] = useState<WorkItem[]>(baseItems);
   const [workflowStateByItemId, setWorkflowStateByItemId] = useState<Record<string, WorkflowItemState>>({});
   const [globalActivityLog, setGlobalActivityLog] = useState<WorkflowActivityEvent[]>([]);
+  const itemsRef = useRef(items);
+  const workflowStateRef = useRef(workflowStateByItemId);
 
   useEffect(() => {
     setItems(baseItems);
   }, [baseItems]);
+
+  useEffect(() => {
+    itemsRef.current = items;
+  }, [items]);
+
+  useEffect(() => {
+    workflowStateRef.current = workflowStateByItemId;
+  }, [workflowStateByItemId]);
 
   const updateItem = useCallback((itemId: string, updater: (item: WorkItem) => WorkItem) => {
     setItems((current) => current.map((item) => (item.id === itemId ? updater(item) : item)));
@@ -39,9 +49,9 @@ export function useWorkflowState(baseItems: WorkItem[], currentAnalyst: string) 
 
   const getOrCreateWorkspace = useCallback(
     (item: WorkItem) =>
-      workflowStateByItemId[item.id]?.workspace ??
+      workflowStateRef.current[item.id]?.workspace ??
       createWorkspaceStateFromFixture(buildInvestigationContext(item).fixture),
-    [workflowStateByItemId],
+    [],
   );
 
   const ensureWorkspaceState = useCallback((item: WorkItem) => {
@@ -119,9 +129,13 @@ export function useWorkflowState(baseItems: WorkItem[], currentAnalyst: string) 
   );
 
   const syncItemFromWorkspace = useCallback(
-    (baseItem: WorkItem, workspace: InvestigationWorkspaceState) => {
+    (
+      baseItem: WorkItem,
+      workspace: InvestigationWorkspaceState,
+      options?: { manualStatusOverride?: boolean },
+    ) => {
       const derivedContainment = deriveContainmentState(workspace.actions, baseItem);
-      const manualStatusOverride = workflowStateByItemId[baseItem.id]?.manualStatusOverride;
+      const manualStatusOverride = options?.manualStatusOverride ?? false;
       const nextStatus =
         !manualStatusOverride && baseItem.status !== 'Resolved'
           ? deriveWorkflowStatus(workspace.actions, baseItem.status)
@@ -145,7 +159,7 @@ export function useWorkflowState(baseItems: WorkItem[], currentAnalyst: string) 
         },
       };
     },
-    [workflowStateByItemId],
+    [],
   );
 
   const updateWorkspaceState = useCallback(
@@ -154,9 +168,17 @@ export function useWorkflowState(baseItems: WorkItem[], currentAnalyst: string) 
       updater: (workspace: InvestigationWorkspaceState) => InvestigationWorkspaceState,
       options?: { logContainmentChange?: boolean },
     ) => {
-      const currentWorkspace = getOrCreateWorkspace(item);
+      const latestItems = itemsRef.current;
+      const latestWorkflowState = workflowStateRef.current;
+      const latestItem = latestItems.find((entry) => entry.id === item.id) ?? item;
+      const currentWorkflowEntry = latestWorkflowState[item.id];
+      const currentWorkspace =
+        currentWorkflowEntry?.workspace ??
+        createWorkspaceStateFromFixture(buildInvestigationContext(latestItem).fixture);
       const nextWorkspace = updater(currentWorkspace);
-      const nextItem = syncItemFromWorkspace(item, nextWorkspace);
+      const nextItem = syncItemFromWorkspace(latestItem, nextWorkspace, {
+        manualStatusOverride: currentWorkflowEntry?.manualStatusOverride,
+      });
 
       setWorkflowStateByItemId((current) => ({
         ...current,
@@ -165,20 +187,27 @@ export function useWorkflowState(baseItems: WorkItem[], currentAnalyst: string) 
           workspace: nextWorkspace,
         },
       }));
+      workflowStateRef.current = {
+        ...latestWorkflowState,
+        [item.id]: {
+          ...latestWorkflowState[item.id],
+          workspace: nextWorkspace,
+        },
+      };
 
-      setItems((current) =>
-        current.map((entry) => (entry.id === item.id ? nextItem : entry)),
-      );
+      const nextItems = latestItems.map((entry) => (entry.id === item.id ? nextItem : entry));
+      setItems(nextItems);
+      itemsRef.current = nextItems;
 
-      if (options?.logContainmentChange && item.containment !== nextItem.containment) {
-        appendGlobalActivity(item, {
+      if (options?.logContainmentChange && latestItem.containment !== nextItem.containment) {
+        appendGlobalActivity(latestItem, {
           id: `activity-${Date.now()}-${item.id}`,
           timestamp: 'Just now',
           actor: 'System',
           actorType: 'System',
           activityType: 'Containment derived',
           description: `${item.id} containment changed to ${nextItem.containment}.`,
-          previousValue: item.containment,
+          previousValue: latestItem.containment,
           newValue: nextItem.containment,
           result: nextItem.containment,
         });
