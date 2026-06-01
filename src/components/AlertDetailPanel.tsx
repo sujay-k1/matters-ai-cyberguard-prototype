@@ -1,6 +1,7 @@
 import { Button, Tag } from '@carbon/react';
 import type { IncludedAlertItem } from '../types/investigation';
 import { InvestigationDetailDialog } from './InvestigationDetailDialog';
+import { ProvenanceLabel } from './ProvenanceLabel';
 
 interface AlertDetailPanelProps {
   alert: IncludedAlertItem | null;
@@ -70,8 +71,10 @@ export function AlertDetailPanel({
           <div><dt>Events</dt><dd>{alert.linkedEventsCount}</dd></div>
         </div>
         <div className="cg-investigation-ai-insight">
+          <ProvenanceLabel provenance="AI" textLabel="Correlation rationale" compact />
           <p>{alert.linkingRationale}</p>
         </div>
+        <p className="cg-summary-line">{alert.relevanceSource ?? 'AI-assessed relevance'}</p>
         <section>
           <h4>Linked activity</h4>
           {relatedTimeline.length ? (

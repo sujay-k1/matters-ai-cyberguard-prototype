@@ -1,4 +1,6 @@
 import { ComboBox, Modal, TextInput } from '@carbon/react';
+import { AISuggestedTextInput } from './AISuggestedTextInput';
+import type { DraftProvenance } from '../types/ai';
 
 interface InvestigationTaskModalProps {
   open: boolean;
@@ -6,8 +8,10 @@ interface InvestigationTaskModalProps {
   title: string;
   owner: string;
   owners: string[];
+  taskTitleSuggestion?: string;
   onTitleChange: (value: string) => void;
   onOwnerChange: (value: string) => void;
+  onTaskTitleProvenanceChange?: (value: DraftProvenance) => void;
   onClose: () => void;
   onSubmit: () => void;
 }
@@ -18,8 +22,10 @@ export function InvestigationTaskModal({
   title,
   owner,
   owners,
+  taskTitleSuggestion,
   onTitleChange,
   onOwnerChange,
+  onTaskTitleProvenanceChange,
   onClose,
   onSubmit,
 }: InvestigationTaskModalProps) {
@@ -45,12 +51,14 @@ export function InvestigationTaskModal({
             readOnly
           />
         ) : (
-          <TextInput
+          <AISuggestedTextInput
             id="investigation-task-title"
             labelText="Task"
             placeholder="Describe the next investigation check"
+            aiSuggestion={taskTitleSuggestion}
             value={title}
-            onChange={(event) => onTitleChange(event.currentTarget.value)}
+            onChange={onTitleChange}
+            onProvenanceChange={onTaskTitleProvenanceChange}
           />
         )}
         <ComboBox

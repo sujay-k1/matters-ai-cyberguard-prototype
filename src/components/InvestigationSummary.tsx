@@ -1,6 +1,10 @@
-import { AILabel, AILabelContent, Button, Checkbox, Tag, TextArea } from '@carbon/react';
+import { AILabel, AILabelContent, Button, Checkbox, Tag } from '@carbon/react';
 import type { InvestigationContext, InvestigationTask } from '../types/investigation';
 import type { WorkItem } from '../types/queue';
+import type { DraftProvenance } from '../types/ai';
+import { AISuggestedTextArea } from './AISuggestedTextArea';
+import { ProvenanceLabel } from './ProvenanceLabel';
+import { buildAISuggestion, draftSourceLabel } from '../data/aiDraftSuggestions';
 
 interface InvestigationSummaryProps {
   context: InvestigationContext;
@@ -13,6 +17,7 @@ interface InvestigationSummaryProps {
   onOpenTaskModal: () => void;
   onOpenTaskAssignModal: (taskId: string) => void;
   onTabChange: (tab: 'evidence') => void;
+  onQuickNoteProvenanceChange?: (value: DraftProvenance) => void;
 }
 
 export function InvestigationSummary({
@@ -26,6 +31,7 @@ export function InvestigationSummary({
   onOpenTaskModal,
   onOpenTaskAssignModal,
   onTabChange,
+  onQuickNoteProvenanceChange,
 }: InvestigationSummaryProps) {
   const { fixture } = context;
   const natureRows = item.preview.why_prioritized.map((entry, index) => {
@@ -65,6 +71,7 @@ export function InvestigationSummary({
 
         <section className="cg-preview-block cg-investigation-panel">
           <h3>{item.item_type === 'case' ? 'Nature of case' : 'Nature of alert'}</h3>
+          <ProvenanceLabel provenance="AI" textLabel="Risk interpretation" compact />
           <dl className="cg-quick-facts-grid">
             {natureRows.map((row) => (
               <div key={`${row.label}-${row.value}`}>
@@ -82,6 +89,7 @@ export function InvestigationSummary({
               Add task
             </Button>
           </div>
+          <ProvenanceLabel provenance="AI" textLabel="Suggested investigation checks" compact />
           <div className="cg-investigation-task-list">
             {tasks.map((task) => (
               <div key={task.id} className="cg-investigation-task-row">
@@ -93,6 +101,13 @@ export function InvestigationSummary({
                 />
                 <div>
                   <p>{task.title}</p>
+                  <p className="cg-summary-line">
+                    {task.createdBy === 'AI'
+                      ? 'AI suggested'
+                      : task.draftProvenance
+                        ? draftSourceLabel(task.draftProvenance)
+                        : 'Analyst added'}
+                  </p>
                   <div className="cg-investigation-task-owner">
                     <span>{task.owner}</span>
                     <Button kind="ghost" size="sm" onClick={() => onOpenTaskAssignModal(task.id)}>
@@ -108,12 +123,15 @@ export function InvestigationSummary({
         <section className="cg-preview-block cg-investigation-panel">
           <h3>Quick note</h3>
           <div className="cg-investigation-note-inline">
-            <TextArea
+            <AISuggestedTextArea
               id="investigation-quick-note"
-              labelText=""
+              labelText="Quick note"
+              placeholder="Capture analyst context, evidence decisions, or handoff details"
+              aiSuggestion={buildAISuggestion('quick-note', { item, investigationContext: context })}
               rows={3}
               value={quickNote}
-              onChange={(event) => onQuickNoteChange(event.currentTarget.value)}
+              onChange={onQuickNoteChange}
+              onProvenanceChange={onQuickNoteProvenanceChange}
             />
             <div className="cg-investigation-note-inline__actions">
               <Button kind="secondary" size="sm" onClick={onAddQuickNote}>
@@ -125,6 +143,7 @@ export function InvestigationSummary({
 
         <section className="cg-preview-block cg-investigation-panel">
           <h3>Open questions</h3>
+          <ProvenanceLabel provenance="AI" textLabel="Suggested open questions" compact />
           <ul className="cg-investigation-bullets">
             {fixture.openQuestions.map((question) => (
               <li key={question}>{question}</li>
@@ -168,6 +187,7 @@ export function InvestigationSummary({
           {item.item_type === 'case' ? (
             <>
               <p className="cg-summary-line">{item.alert_count ?? item.preview.alerts?.length ?? 0} alerts included</p>
+              <ProvenanceLabel provenance="AI" textLabel="Correlation rationale" compact />
               <p className="cg-readable-copy">{item.preview.grouping_rationale}</p>
               <div className="cg-alert-rows">
                 {(item.preview.alerts ?? []).map((alert) => (
@@ -200,6 +220,15 @@ export function InvestigationSummary({
 
         <section className="cg-preview-block cg-investigation-panel">
           <h3>Intelligence and automation</h3>
+          <div className="cg-ai-heading">
+            <AILabel
+              kind="inline"
+              size="sm"
+              textLabel="Assessment"
+              aria-label="AI assessment"
+              AILabelContent={<AILabelContent>Assessment reflects the seeded verdict and confidence for this item.</AILabelContent>}
+            />
+          </div>
           <dl className="cg-definition-list">
             <div>
               <dt>AI verdict</dt>

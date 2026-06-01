@@ -1,6 +1,7 @@
 import { Button } from '@carbon/react';
 import type { WorkflowActivityEvent } from '../types/investigation';
 import { InvestigationDetailDialog } from './InvestigationDetailDialog';
+import { draftSourceLabel } from '../data/aiDraftSuggestions';
 
 interface ActivityEventDetailPanelProps {
   event: WorkflowActivityEvent | null;
@@ -44,6 +45,12 @@ export function ActivityEventDetailPanel({ event, onClose, onOpenWorkItem }: Act
           <section>
             <h4>Comment</h4>
             <p>{event.comment}</p>
+          </section>
+        ) : null}
+        {event.draftProvenance ? (
+          <section>
+            <h4>Draft source</h4>
+            <p>{draftSourceLabel(event.draftProvenance)}</p>
           </section>
         ) : null}
     </InvestigationDetailDialog>

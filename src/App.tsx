@@ -10,6 +10,7 @@ import {
 } from '@carbon/react';
 import specData from './data/cyberguard_work_queue_content_spec_v1.json';
 import { AppHeader } from './components/AppHeader';
+import { AISuggestedTextArea } from './components/AISuggestedTextArea';
 import { AlertsCaseOverview } from './components/AlertsCaseOverview';
 import { BulkActionBar } from './components/BulkActionBar';
 import { ClassifyItemModal } from './components/ClassifyItemModal';
@@ -29,6 +30,8 @@ import { WorkQueueHeader } from './components/WorkQueueHeader';
 import { WorkQueueTable } from './components/WorkQueueTable';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { useWorkflowState } from './hooks/useWorkflowState';
+import { buildAISuggestion } from './data/aiDraftSuggestions';
+import type { DraftProvenance } from './types/ai';
 import type { InvestigationTabId, WorkItemClassification, WorkflowActivityEvent } from './types/investigation';
 import type {
   ColumnDefinition,
@@ -175,10 +178,13 @@ function App() {
   const [pendingTag, setPendingTag] = useState('Needs review');
   const [pendingSeverity, setPendingSeverity] = useState<(typeof severityOptions)[number]>('High');
   const [severityComment, setSeverityComment] = useState('');
+  const [severityCommentProvenance, setSeverityCommentProvenance] = useState<DraftProvenance | undefined>();
   const [reopenComment, setReopenComment] = useState('');
+  const [reopenCommentProvenance, setReopenCommentProvenance] = useState<DraftProvenance | undefined>();
   const [reopenStatus, setReopenStatus] = useState<(typeof workflowStatusOptions)[number]>('Investigating');
   const [pendingClassification, setPendingClassification] = useState<WorkItemClassification>('True positive — malicious activity');
   const [classificationComment, setClassificationComment] = useState('');
+  const [classificationCommentProvenance, setClassificationCommentProvenance] = useState<DraftProvenance | undefined>();
   const [duplicateCaseId, setDuplicateCaseId] = useState('');
   const [exceptionOwner, setExceptionOwner] = useState('');
   const [createTuningFeedback, setCreateTuningFeedback] = useState(false);
@@ -187,6 +193,7 @@ function App() {
   const [remediationSummary, setRemediationSummary] = useState('');
   const [residualRisk, setResidualRisk] = useState('');
   const [finalResolutionComment, setFinalResolutionComment] = useState('');
+  const [resolutionFieldProvenance, setResolutionFieldProvenance] = useState<Partial<Record<'resolutionSummary' | 'rootCause' | 'remediationSummary' | 'residualRisk' | 'finalComment' | 'exceptionReason', DraftProvenance>>>({});
   const [monitoringRequired, setMonitoringRequired] = useState(true);
   const [resolutionRecipients, setResolutionRecipients] = useState<string[]>([]);
   const [childAlertHandling, setChildAlertHandling] = useState<'resolve-all' | 'detach-selected'>('resolve-all');
@@ -196,15 +203,19 @@ function App() {
   const [escalationUrgency, setEscalationUrgency] = useState('High');
   const [escalationReason, setEscalationReason] = useState('');
   const [escalationNote, setEscalationNote] = useState('');
+  const [escalationReasonProvenance, setEscalationReasonProvenance] = useState<DraftProvenance | undefined>();
+  const [escalationNoteProvenance, setEscalationNoteProvenance] = useState<DraftProvenance | undefined>();
   const [escalationTaskOwner, setEscalationTaskOwner] = useState('');
   const [notifyDataOwner, setNotifyDataOwner] = useState(false);
   const [mergeReopenComment, setMergeReopenComment] = useState('');
+  const [mergeReopenCommentProvenance, setMergeReopenCommentProvenance] = useState<DraftProvenance | undefined>();
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const [destinationCaseId, setDestinationCaseId] = useState<string | null>(null);
   const [showShortcutOverlays, setShowShortcutOverlays] = useState(false);
   const [queuePreset, setQueuePreset] = useState<QueuePreset | null>(null);
   const [commentModalOpen, setCommentModalOpen] = useState(false);
   const [itemCommentDraft, setItemCommentDraft] = useState('');
+  const [itemCommentDraftProvenance, setItemCommentDraftProvenance] = useState<DraftProvenance | undefined>();
   const [tagEditorOpen, setTagEditorOpen] = useState(false);
   const [editableTags, setEditableTags] = useState<string[]>([]);
   const [newTagDraft, setNewTagDraft] = useState('');
@@ -423,7 +434,7 @@ function App() {
       setInvestigationItemId(cloudCase?.id ?? null);
       setActiveInvestigationTab('summary');
       setInvestigationInfoOpen(true);
-    } else if (state === 'response-action' || state === 'pending-approval' || state === 'failed-action' || state === 'resolve-case' || state === 'resolve-exception' || state === 'handoff' || state === 'raw-evidence' || state === 'hunt-results') {
+    } else if (state === 'response-action' || state === 'pending-approval' || state === 'failed-action' || state === 'resolve-case' || state === 'resolve-exception' || state === 'handoff' || state === 'raw-evidence' || state === 'hunt-results' || state === 'ai-provenance-investigation' || state === 'system-derived-containment') {
       const heroCase = items.find((item) => item.id === 'CASE-3001') ?? items.find((item) => item.item_type === 'case') ?? items[0];
       if (heroCase) ensureWorkspaceState(heroCase);
       setActiveTab('Work Queue');
@@ -431,7 +442,7 @@ function App() {
       setInvestigationItemId(heroCase?.id ?? null);
       setActiveInvestigationTab(
         state === 'raw-evidence' ? 'timeline'
-          : state === 'response-action' || state === 'pending-approval' || state === 'failed-action'
+          : state === 'response-action' || state === 'pending-approval' || state === 'failed-action' || state === 'system-derived-containment'
             ? 'actions'
             : 'summary',
       );
@@ -457,6 +468,45 @@ function App() {
         updateWorkspaceState(heroCase, (current) => ({
           ...current,
           selectedEvidenceId: current.evidence[0]?.id ?? null,
+        }));
+      }
+    } else if (state === 'ai-provenance-preview') {
+      const heroCase = items.find((item) => item.id === 'CASE-3001') ?? items.find((item) => item.item_type === 'case') ?? items[0];
+      setActiveTab('Work Queue');
+      setPreviewItemId(heroCase?.id ?? null);
+    } else if (state === 'ai-suggestion-resolution') {
+      const cloudCase = items.find((item) => item.id === 'CASE-3002') ?? items.find((item) => item.item_type === 'case') ?? items[0];
+      if (cloudCase) ensureWorkspaceState(cloudCase);
+      setActiveTab('Work Queue');
+      setPreviewItemId(cloudCase?.id ?? null);
+      setInvestigationItemId(cloudCase?.id ?? null);
+      setResolveModalOpen(true);
+    } else if (state === 'ai-suggestion-approval') {
+      const heroCase = items.find((item) => item.id === 'CASE-3001') ?? items.find((item) => item.item_type === 'case') ?? items[0];
+      if (heroCase) ensureWorkspaceState(heroCase);
+      setActiveTab('Work Queue');
+      setPreviewItemId(heroCase?.id ?? null);
+      setInvestigationItemId(heroCase?.id ?? null);
+      setActiveInvestigationTab('actions');
+      setInvestigationInfoOpen(true);
+      if (heroCase) {
+        updateWorkspaceState(heroCase, (current) => ({
+          ...current,
+          selectedActionId: current.actions.find((entry) => entry.currentState === 'Pending approval' || entry.requiresApproval)?.id ?? current.actions[0]?.id ?? null,
+        }));
+      }
+    } else if (state === 'system-derived-baseline') {
+      const heroCase = items.find((item) => item.id === 'CASE-3001') ?? items.find((item) => item.item_type === 'case') ?? items[0];
+      if (heroCase) ensureWorkspaceState(heroCase);
+      setActiveTab('Work Queue');
+      setPreviewItemId(heroCase?.id ?? null);
+      setInvestigationItemId(heroCase?.id ?? null);
+      setActiveInvestigationTab('entities');
+      setInvestigationInfoOpen(true);
+      if (heroCase) {
+        updateWorkspaceState(heroCase, (current) => ({
+          ...current,
+          selectedEntityId: current.entities[0]?.id ?? null,
         }));
       }
     } else if (state === 'classification') {
@@ -506,12 +556,14 @@ function App() {
     if (!targetItem) return;
     setPendingSeverity((targetItem.analystSeverityOverride?.severity ?? targetItem.severity) as (typeof severityOptions)[number]);
     setSeverityComment('');
+    setSeverityCommentProvenance(undefined);
     setSeverityModalOpen(true);
   };
 
   const openReopenModal = (nextStatus: (typeof workflowStatusOptions)[number] = 'Investigating') => {
     setReopenStatus(nextStatus);
     setReopenComment('');
+    setReopenCommentProvenance(undefined);
     setReopenModalOpen(true);
   };
 
@@ -546,14 +598,14 @@ function App() {
 
   const handleConfirmReopen = () => {
     if (!previewItem || !reopenComment.trim()) return;
-    reopenItem(previewItem.id, reopenStatus, reopenComment.trim());
+    reopenItem(previewItem.id, reopenStatus, reopenComment.trim(), reopenCommentProvenance);
     setReopenModalOpen(false);
     addToast('success', `${previewItem.id} reopened`, `${previewItem.id} reopened as ${reopenStatus}.`);
   };
 
   const handleApplySeverityOverride = () => {
     if (!previewItem || !severityComment.trim()) return;
-    overrideSeverity(previewItem.id, pendingSeverity, severityComment.trim());
+    overrideSeverity(previewItem.id, pendingSeverity, severityComment.trim(), CURRENT_ANALYST, severityCommentProvenance);
     setSeverityModalOpen(false);
     addToast('success', 'Severity override applied', `${previewItem.id} severity changed to ${pendingSeverity}.`);
   };
@@ -710,6 +762,7 @@ function App() {
     if (!item) return;
     setPendingClassification(item.classification ?? 'True positive — malicious activity');
     setClassificationComment('');
+    setClassificationCommentProvenance(undefined);
     setDuplicateCaseId('');
     setExceptionOwner('');
     setCreateTuningFeedback(false);
@@ -725,6 +778,7 @@ function App() {
     setRemediationSummary(item.resolution?.remediationSummary ?? '');
     setResidualRisk(item.resolution?.residualRisk ?? '');
     setFinalResolutionComment('');
+    setResolutionFieldProvenance({});
     setMonitoringRequired(item.resolution?.monitoringRequired ?? true);
     setResolutionRecipients(item.resolution?.notificationRecipients ?? []);
     setChildAlertHandling('resolve-all');
@@ -738,6 +792,8 @@ function App() {
     setEscalationUrgency('High');
     setEscalationReason('');
     setEscalationNote('');
+    setEscalationReasonProvenance(undefined);
+    setEscalationNoteProvenance(undefined);
     setEscalationTaskOwner('');
     setNotifyDataOwner(false);
     setEscalateModalOpen(true);
@@ -748,6 +804,7 @@ function App() {
     classifyItem(classificationTargetItem.id, {
       classification: pendingClassification,
       comment: classificationComment.trim(),
+      commentProvenance: classificationCommentProvenance,
       updatedBy: CURRENT_ANALYST,
       updatedAt: 'Just now',
       duplicateCaseId: pendingClassification === 'Duplicate' ? duplicateCaseId.trim() : undefined,
@@ -800,9 +857,10 @@ function App() {
       resolvedAt: 'Just now',
       resolvedWithException: resolvingWithException,
       exceptionReason: resolvingWithException ? exceptionReason.trim() : undefined,
+      fieldProvenance: resolutionFieldProvenance,
       childAlertHandling,
       detachedAlertIds: childAlertHandling === 'detach-selected' ? detachedAlertIds : [],
-    }, finalResolutionComment.trim());
+    }, finalResolutionComment.trim(), resolutionFieldProvenance.finalComment);
     if (resolvingWithException) {
       addToast('warning', 'Resolved with exception', `${classificationTargetItem.id} was resolved with an analyst exception.`);
     } else {
@@ -822,6 +880,8 @@ function App() {
       createdAt: 'Just now',
       taskOwner: escalationTaskOwner || undefined,
       notifyDataOwner,
+      reasonProvenance: escalationReasonProvenance,
+      noteProvenance: escalationNoteProvenance,
     });
     if (escalationTaskOwner) {
       updateWorkspaceState(classificationTargetItem, (current) => ({
@@ -1113,6 +1173,7 @@ function App() {
                   onChangeSeverity={openSeverityOverride}
                   onAddComment={() => {
                     setItemCommentDraft('');
+                    setItemCommentDraftProvenance(undefined);
                     setCommentModalOpen(true);
                   }}
                   onEditTags={() => {
@@ -1173,10 +1234,12 @@ function App() {
         requiresReopenComment={mergeSummary?.requiresReopenComment ?? false}
         reopenComment={mergeReopenComment}
         onReopenCommentChange={setMergeReopenComment}
+        onReopenCommentProvenanceChange={setMergeReopenCommentProvenance}
         onDestinationChange={setDestinationCaseId}
         onClose={() => {
           setMergeOpen(false);
           setMergeReopenComment('');
+          setMergeReopenCommentProvenance(undefined);
         }}
         onSubmit={handleConsolidate}
       />
@@ -1259,13 +1322,15 @@ function App() {
               }
             }}
           />
-          <TextArea
+          <AISuggestedTextArea
             id="severity-comment"
             labelText="Why are you changing the severity?"
             placeholder="Explain the analyst override"
+            aiSuggestion={previewItem ? buildAISuggestion('severity-override-reason', { item: previewItem }) : undefined}
             rows={4}
             value={severityComment}
-            onChange={(event) => setSeverityComment(event.currentTarget.value)}
+            onChange={setSeverityComment}
+            onProvenanceChange={setSeverityCommentProvenance}
           />
         </div>
       </Modal>
@@ -1281,13 +1346,15 @@ function App() {
       >
         <div className="cg-dialog-stack">
           <p>This item will reopen as {reopenStatus}.</p>
-          <TextArea
+          <AISuggestedTextArea
             id="reopen-comment"
             labelText="Why are you reopening this item?"
             placeholder="Add the required reopening comment"
+            aiSuggestion={previewItem ? buildAISuggestion('reopen-reason', { item: previewItem }) : undefined}
             rows={4}
             value={reopenComment}
-            onChange={(event) => setReopenComment(event.currentTarget.value)}
+            onChange={setReopenComment}
+            onProvenanceChange={setReopenCommentProvenance}
           />
         </div>
       </Modal>
@@ -1298,11 +1365,13 @@ function App() {
         title="Add comment"
         primaryButtonText="Save comment"
         labelText="Comment"
+        aiSuggestion={classificationTargetItem ? buildAISuggestion('general-comment', { item: classificationTargetItem }) : undefined}
         onChange={setItemCommentDraft}
+        onDraftProvenanceChange={setItemCommentDraftProvenance}
         onClose={() => setCommentModalOpen(false)}
         onSubmit={() => {
           if (!classificationTargetItem || !itemCommentDraft.trim()) return;
-          appendItemComment(classificationTargetItem.id, itemCommentDraft.trim());
+          appendItemComment(classificationTargetItem.id, itemCommentDraft.trim(), CURRENT_ANALYST, itemCommentDraftProvenance);
           setCommentModalOpen(false);
           addToast('success', 'Comment saved', `Added a comment to ${classificationTargetItem.id}.`);
         }}
@@ -1377,11 +1446,13 @@ function App() {
         itemId={classificationTargetItem?.id ?? null}
         classification={pendingClassification}
         comment={classificationComment}
+        commentSuggestion={classificationTargetItem ? buildAISuggestion('classification-comment', { item: classificationTargetItem, classification: pendingClassification, workspace: getOrCreateWorkspace(classificationTargetItem) }) : undefined}
         duplicateCaseId={duplicateCaseId}
         exceptionOwner={exceptionOwner}
         createTuningFeedback={createTuningFeedback}
         onClassificationChange={setPendingClassification}
         onCommentChange={setClassificationComment}
+        onCommentProvenanceChange={setClassificationCommentProvenance}
         onDuplicateCaseIdChange={setDuplicateCaseId}
         onExceptionOwnerChange={setExceptionOwner}
         onCreateTuningFeedbackChange={setCreateTuningFeedback}
@@ -1407,6 +1478,18 @@ function App() {
         selectedRecipients={resolutionRecipients}
         warnings={resolutionWarnings}
         exceptionReason={exceptionReason}
+        suggestions={
+          classificationTargetItem
+            ? {
+                resolutionSummary: buildAISuggestion('resolution-summary', { item: classificationTargetItem, workspace: getOrCreateWorkspace(classificationTargetItem), warnings: resolutionWarnings, classification: pendingClassification }),
+                rootCause: buildAISuggestion('root-cause', { item: classificationTargetItem, workspace: getOrCreateWorkspace(classificationTargetItem), warnings: resolutionWarnings, classification: pendingClassification }),
+                remediationSummary: buildAISuggestion('remediation-summary', { item: classificationTargetItem, workspace: getOrCreateWorkspace(classificationTargetItem), warnings: resolutionWarnings, classification: pendingClassification }),
+                residualRisk: buildAISuggestion('residual-risk', { item: classificationTargetItem, workspace: getOrCreateWorkspace(classificationTargetItem), warnings: resolutionWarnings, classification: pendingClassification }),
+                finalComment: buildAISuggestion('resolution-final-comment', { item: classificationTargetItem, workspace: getOrCreateWorkspace(classificationTargetItem), warnings: resolutionWarnings, classification: pendingClassification }),
+                exceptionReason: buildAISuggestion('resolution-exception-reason', { item: classificationTargetItem, workspace: getOrCreateWorkspace(classificationTargetItem), warnings: resolutionWarnings, classification: pendingClassification }),
+              }
+            : undefined
+        }
         onClassificationChange={setPendingClassification}
         onResolutionSummaryChange={setResolutionSummary}
         onRootCauseChange={setRootCause}
@@ -1426,6 +1509,7 @@ function App() {
           )
         }
         onExceptionReasonChange={setExceptionReason}
+        onFieldProvenanceChange={(field, provenance) => setResolutionFieldProvenance((current) => ({ ...current, [field]: provenance }))}
         onClose={() => setResolveModalOpen(false)}
         onSubmit={handleSubmitResolution}
       />
@@ -1436,6 +1520,8 @@ function App() {
         urgency={escalationUrgency}
         reason={escalationReason}
         note={escalationNote}
+        reasonSuggestion={classificationTargetItem ? buildAISuggestion('escalation-reason', { item: classificationTargetItem, workspace: getOrCreateWorkspace(classificationTargetItem), selectedTeam: escalationTeam }) : undefined}
+        noteSuggestion={classificationTargetItem ? buildAISuggestion('escalation-note', { item: classificationTargetItem, workspace: getOrCreateWorkspace(classificationTargetItem), selectedTeam: escalationTeam }) : undefined}
         taskOwner={escalationTaskOwner}
         notifyDataOwner={notifyDataOwner}
         teams={['Incident response', 'Data platform owner', 'Data owner', 'Compliance', 'Legal', 'HR / insider-risk team', 'Cloud platform team', 'Endpoint response team']}
@@ -1444,6 +1530,8 @@ function App() {
         onUrgencyChange={setEscalationUrgency}
         onReasonChange={setEscalationReason}
         onNoteChange={setEscalationNote}
+        onReasonProvenanceChange={setEscalationReasonProvenance}
+        onNoteProvenanceChange={setEscalationNoteProvenance}
         onTaskOwnerChange={setEscalationTaskOwner}
         onNotifyDataOwnerChange={setNotifyDataOwner}
         onClose={() => setEscalateModalOpen(false)}
@@ -1490,8 +1578,8 @@ function App() {
           onSyncEvidenceAttachment={(evidenceId) => syncEvidenceAttachment(investigationItem.id, evidenceId)}
           onDetachAlertFromCase={(alertId) => detachAlertFromCase(investigationItem.id, alertId)}
           onAttachAlertToCase={(alertId) => attachAlertToCase(investigationItem.id, alertId)}
-          onMoveAlertToCase={(alertId, destinationCaseId, reason) =>
-            moveAlertBetweenCases(alertId, investigationItem.id, destinationCaseId, reason)
+          onMoveAlertToCase={(alertId, destinationCaseId, reason, draftProvenance) =>
+            moveAlertBetweenCases(alertId, investigationItem.id, destinationCaseId, reason, CURRENT_ANALYST, draftProvenance)
           }
           availableCases={items
             .filter((entry) => entry.item_type === 'case')

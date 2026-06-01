@@ -1,9 +1,13 @@
 import { AILabel, AILabelContent, Button } from '@carbon/react';
 import type { InvestigationContext } from '../types/investigation';
+import type { DraftProvenance } from '../types/ai';
+import { ProvenanceLabel } from './ProvenanceLabel';
+import { draftSourceLabel } from '../data/aiDraftSuggestions';
 
 interface InvestigationRightRailProps {
   context: InvestigationContext;
   hypothesis: string;
+  hypothesisProvenance?: DraftProvenance;
   onOpenHypothesisModal: () => void;
   onEscalate: () => void;
 }
@@ -11,6 +15,7 @@ interface InvestigationRightRailProps {
 export function InvestigationRightRail({
   context,
   hypothesis,
+  hypothesisProvenance,
   onOpenHypothesisModal,
   onEscalate,
 }: InvestigationRightRailProps) {
@@ -31,6 +36,17 @@ export function InvestigationRightRail({
             <dt>Current hypothesis</dt>
             <dd>
               <div className="cg-investigation-guide-hypothesis">
+                <ProvenanceLabel
+                  provenance={
+                    hypothesisProvenance === 'AI-assisted'
+                      ? 'AI-assisted'
+                      : hypothesisProvenance === 'AI-assisted-edited'
+                        ? 'AI-assisted-edited'
+                        : 'Analyst-authored'
+                  }
+                  textLabel={draftSourceLabel(hypothesisProvenance)}
+                  compact
+                />
                 <span>{hypothesis}</span>
                 <Button kind="tertiary" size="sm" onClick={onOpenHypothesisModal}>
                   Update hypothesis

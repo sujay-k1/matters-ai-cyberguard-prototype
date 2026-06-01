@@ -1,4 +1,6 @@
-import { Modal, TextArea } from '@carbon/react';
+import { Modal } from '@carbon/react';
+import { AISuggestedTextArea } from './AISuggestedTextArea';
+import type { DraftProvenance } from '../types/ai';
 
 interface ResponseRejectModalProps {
   open: boolean;
@@ -6,7 +8,9 @@ interface ResponseRejectModalProps {
   heading?: string;
   label?: string;
   primaryButtonText?: string;
+  commentSuggestion?: string;
   onChange: (value: string) => void;
+  onCommentProvenanceChange?: (value: DraftProvenance) => void;
   onClose: () => void;
   onSubmit: () => void;
 }
@@ -17,7 +21,9 @@ export function ResponseRejectModal({
   heading = 'Reject action',
   label = 'Comment',
   primaryButtonText = 'Reject',
+  commentSuggestion,
   onChange,
+  onCommentProvenanceChange,
   onClose,
   onSubmit,
 }: ResponseRejectModalProps) {
@@ -33,12 +39,15 @@ export function ResponseRejectModal({
       onRequestClose={onClose}
       onRequestSubmit={onSubmit}
     >
-      <TextArea
+      <AISuggestedTextArea
         id="response-reject-comment"
         labelText={label}
+        placeholder={`Add ${label.toLowerCase()}`}
+        aiSuggestion={commentSuggestion}
         rows={4}
         value={value}
-        onChange={(event) => onChange(event.currentTarget.value)}
+        onChange={onChange}
+        onProvenanceChange={onCommentProvenanceChange}
       />
     </Modal>
   );

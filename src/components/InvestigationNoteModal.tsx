@@ -1,5 +1,7 @@
-import { Modal, TextArea } from '@carbon/react';
+import { Modal } from '@carbon/react';
 import { useEffect } from 'react';
+import { AISuggestedTextArea } from './AISuggestedTextArea';
+import type { DraftProvenance } from '../types/ai';
 
 interface InvestigationNoteModalProps {
   open: boolean;
@@ -9,7 +11,10 @@ interface InvestigationNoteModalProps {
   primaryButtonText?: string;
   labelText?: string;
   placeholder?: string;
+  aiSuggestion?: string;
+  helperText?: string;
   onChange: (value: string) => void;
+  onDraftProvenanceChange?: (value: DraftProvenance) => void;
   onClose: () => void;
   onSubmit: () => void;
 }
@@ -22,7 +27,10 @@ export function InvestigationNoteModal({
   primaryButtonText = 'Save note',
   labelText = 'Note',
   placeholder = 'Capture analyst context, evidence decisions, or handoff details',
+  aiSuggestion,
+  helperText,
   onChange,
+  onDraftProvenanceChange,
   onClose,
   onSubmit,
 }: InvestigationNoteModalProps) {
@@ -47,13 +55,16 @@ export function InvestigationNoteModal({
       onRequestClose={onClose}
       onRequestSubmit={onSubmit}
     >
-      <TextArea
+      <AISuggestedTextArea
         id={textAreaId}
         labelText={labelText}
         placeholder={placeholder}
+        aiSuggestion={aiSuggestion}
+        helperText={helperText}
         rows={5}
         value={value}
-        onChange={(event) => onChange(event.currentTarget.value)}
+        onChange={onChange}
+        onProvenanceChange={onDraftProvenanceChange}
       />
     </Modal>
   );

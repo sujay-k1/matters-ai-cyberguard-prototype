@@ -1,4 +1,6 @@
-import { Checkbox, ComboBox, Dropdown, Modal, TextArea } from '@carbon/react';
+import { Checkbox, ComboBox, Dropdown, Modal } from '@carbon/react';
+import { AISuggestedTextArea } from './AISuggestedTextArea';
+import type { DraftProvenance } from '../types/ai';
 
 interface EscalateCaseModalProps {
   open: boolean;
@@ -10,10 +12,14 @@ interface EscalateCaseModalProps {
   notifyDataOwner: boolean;
   teams: string[];
   owners: string[];
+  reasonSuggestion?: string;
+  noteSuggestion?: string;
   onTeamChange: (value: string) => void;
   onUrgencyChange: (value: string) => void;
   onReasonChange: (value: string) => void;
   onNoteChange: (value: string) => void;
+  onReasonProvenanceChange?: (value: DraftProvenance) => void;
+  onNoteProvenanceChange?: (value: DraftProvenance) => void;
   onTaskOwnerChange: (value: string) => void;
   onNotifyDataOwnerChange: (checked: boolean) => void;
   onClose: () => void;
@@ -31,10 +37,14 @@ export function EscalateCaseModal(props: EscalateCaseModalProps) {
     notifyDataOwner,
     teams,
     owners,
+    reasonSuggestion,
+    noteSuggestion,
     onTeamChange,
     onUrgencyChange,
     onReasonChange,
     onNoteChange,
+    onReasonProvenanceChange,
+    onNoteProvenanceChange,
     onTaskOwnerChange,
     onNotifyDataOwnerChange,
     onClose,
@@ -72,8 +82,8 @@ export function EscalateCaseModal(props: EscalateCaseModalProps) {
           itemToString={(item) => item?.label ?? ''}
           onChange={({ selectedItem }) => onUrgencyChange(selectedItem?.label ?? '')}
         />
-        <TextArea id="escalate-reason" labelText="Reason" rows={3} value={reason} onChange={(event) => onReasonChange(event.currentTarget.value)} />
-        <TextArea id="escalate-note" labelText="Note" rows={3} value={note} onChange={(event) => onNoteChange(event.currentTarget.value)} />
+        <AISuggestedTextArea id="escalate-reason" labelText="Reason" placeholder="Add the reason for escalation" aiSuggestion={reasonSuggestion} rows={3} value={reason} onChange={onReasonChange} onProvenanceChange={onReasonProvenanceChange} />
+        <AISuggestedTextArea id="escalate-note" labelText="Note" placeholder="Capture any handoff context or request details" aiSuggestion={noteSuggestion} rows={3} value={note} onChange={onNoteChange} onProvenanceChange={onNoteProvenanceChange} />
         <ComboBox id="escalate-task-owner" titleText="Optional task owner" items={owners} selectedItem={taskOwner} itemToString={(item) => item ?? ''} onChange={({ selectedItem }) => onTaskOwnerChange(selectedItem ?? '')} />
         <Checkbox id="escalate-notify-data-owner" labelText="Notify data owner" checked={notifyDataOwner} onChange={(_, { checked }) => onNotifyDataOwnerChange(Boolean(checked))} />
       </div>

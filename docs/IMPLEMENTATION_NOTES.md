@@ -159,3 +159,24 @@
 - Tune responsive behavior for narrower laptop widths
 - Split Carbon-heavy views into code-split chunks if bundle size matters
 - Expand Overview and Activity Log after downstream workflow scope is defined
+
+## AI provenance and AI-assisted drafting
+
+- Added explicit provenance categories:
+  - `AI`
+  - `System-derived`
+  - `Normalized evidence`
+  - `Raw evidence`
+  - `Analyst-authored`
+  - `AI-assisted`
+  - `AI-assisted-edited`
+- Added reusable `ProvenanceLabel`, `AISuggestedTextArea`, and `AISuggestedTextInput` components.
+- Added deterministic local draft suggestions through `src/data/aiDraftSuggestions.ts`.
+- Baseline comparison and derived containment are intentionally labeled `System-derived` because they come from deterministic fixture and workflow calculations rather than generative analysis.
+- AI labels were added to:
+  - preview risk interpretation, suggested next step, grouping rationale, and correlation suggestion
+  - investigation suggested checks, open questions, hypothesis provenance, and action provenance
+  - alert correlation rationale and entity summaries / suggested checks / response candidates
+- Draft provenance is persisted when the analyst saves or submits content; suggestion visibility and `Tab` acceptance alone do not create audit events.
+- Activity detail surfaces now show saved draft provenance when relevant.
+- Known limitation: draft provenance is currently strongest on investigation, classification, resolution, escalation, and comment flows; narrower helper fields like tag editing and case rename intentionally remain analyst-only.

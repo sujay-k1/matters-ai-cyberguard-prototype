@@ -1,5 +1,6 @@
-import { Button, Tag } from '@carbon/react';
+import { Button, Tag, Tooltip } from '@carbon/react';
 import type { InvestigationResponseAction, ResponseActionState } from '../types/investigation';
+import { ProvenanceLabel } from './ProvenanceLabel';
 
 interface InvestigationActionsProps {
   actions: InvestigationResponseAction[];
@@ -44,7 +45,14 @@ export function InvestigationActions({
           <div><span>Pending approval</span><strong>{pendingApproval}</strong></div>
           <div><span>In progress</span><strong>{inProgress}</strong></div>
           <div><span>Failed</span><strong>{failed}</strong></div>
-          <div><span>Derived containment</span><strong>{containment}</strong></div>
+          <div>
+            <span>Derived containment</span>
+            <ProvenanceLabel provenance="System-derived" textLabel="Containment" compact />
+            <strong>{containment}</strong>
+            <Tooltip align="bottom-left" label={`Required: ${requiredContainment.length} · Completed: ${completed} · Pending approval: ${pendingApproval} · In progress: ${inProgress} · Failed: ${failed}`}>
+              <button type="button" className="cg-inline-linklike">Why?</button>
+            </Tooltip>
+          </div>
         </div>
       </section>
 
@@ -58,12 +66,17 @@ export function InvestigationActions({
               {grouped.map((action) => (
                 <article key={action.id} className="cg-investigation-card">
                   <div className="cg-investigation-card__header">
-                    <div>
-                      <Tag type={actionStateTagType(action.currentState)}>{action.currentState}</Tag>
-                      <h4>{action.title}</h4>
-                    </div>
-                    <span>{action.auditTimestamp}</span>
+                  <div>
+                    <Tag type={actionStateTagType(action.currentState)}>{action.currentState}</Tag>
+                    <h4>{action.title}</h4>
                   </div>
+                  <span>{action.auditTimestamp}</span>
+                </div>
+                <ProvenanceLabel
+                  provenance={action.createdBy === 'AI' ? 'AI' : action.createdBy === 'System' ? 'System-derived' : 'Analyst-authored'}
+                  textLabel={action.createdBy === 'AI' ? 'Suggested response action' : action.createdBy === 'System' ? 'System action' : 'Analyst added'}
+                  compact
+                />
                   <div className="cg-investigation-definition-list">
                     <div>
                       <dt>Affected entity</dt>

@@ -1,4 +1,6 @@
-import { Dropdown, Modal, TextArea, TextInput } from '@carbon/react';
+import { Dropdown, Modal, TextInput } from '@carbon/react';
+import { AISuggestedTextArea } from './AISuggestedTextArea';
+import type { DraftProvenance } from '../types/ai';
 
 interface MoveAlertToCaseModalProps {
   open: boolean;
@@ -7,8 +9,10 @@ interface MoveAlertToCaseModalProps {
   destinationCaseId: string;
   reason: string;
   destinationOptions: Array<{ id: string; label: string }>;
+  reasonSuggestion?: string;
   onDestinationChange: (value: string) => void;
   onReasonChange: (value: string) => void;
+  onReasonProvenanceChange?: (value: DraftProvenance) => void;
   onClose: () => void;
   onSubmit: () => void;
 }
@@ -20,8 +24,10 @@ export function MoveAlertToCaseModal({
   destinationCaseId,
   reason,
   destinationOptions,
+  reasonSuggestion,
   onDestinationChange,
   onReasonChange,
+  onReasonProvenanceChange,
   onClose,
   onSubmit,
 }: MoveAlertToCaseModalProps) {
@@ -49,12 +55,15 @@ export function MoveAlertToCaseModal({
           itemToString={(item) => item?.label ?? ''}
           onChange={({ selectedItem }) => onDestinationChange(selectedItem?.id ?? '')}
         />
-        <TextArea
+        <AISuggestedTextArea
           id="move-alert-reason"
           labelText="Reason"
+          placeholder="Explain why the alert should move to another case"
+          aiSuggestion={reasonSuggestion}
           rows={4}
           value={reason}
-          onChange={(event) => onReasonChange(event.currentTarget.value)}
+          onChange={onReasonChange}
+          onProvenanceChange={onReasonProvenanceChange}
         />
       </div>
     </Modal>

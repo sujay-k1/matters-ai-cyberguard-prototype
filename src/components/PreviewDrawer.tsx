@@ -20,6 +20,7 @@ import {
   WarningAlt,
 } from '@carbon/icons-react';
 import type { WorkItem } from '../types/queue';
+import { ProvenanceLabel } from './ProvenanceLabel';
 
 type DrawerSection =
   | 'scope'
@@ -230,6 +231,7 @@ export function PreviewDrawer({
           </PreviewBlock>
 
           <PreviewBlock title={natureTitle}>
+            <ProvenanceLabel provenance="AI" textLabel="Risk interpretation" description="Generated interpretation of the strongest risk signals and priority drivers." compact />
             <dl className="cg-quick-facts-grid">
               {natureRows.map((row) => (
                 <div key={`${row.label}-${row.value}`}>
@@ -241,6 +243,7 @@ export function PreviewDrawer({
           </PreviewBlock>
 
           <PreviewBlock title="Recommended next step" accent icon={<Task size={16} />}>
+            <ProvenanceLabel provenance="AI" textLabel="Suggested next step" description="Recommended analyst action based on current alert, case, and containment context." compact />
             <p>{preview.recommended_next_action}</p>
           </PreviewBlock>
 
@@ -311,6 +314,7 @@ export function PreviewDrawer({
               </div>
               <div className="cg-preview-subgroup">
                 <h4><MachineLearning size={14} /> Grouping rationale</h4>
+                <ProvenanceLabel provenance="AI" textLabel="Correlation rationale" description="Suggested explanation for why the included alerts may represent the same investigation story." compact />
                 <p>{preview.grouping_rationale}</p>
               </div>
               <div className="cg-preview-subgroup">
@@ -340,6 +344,7 @@ export function PreviewDrawer({
               open={openSections.correlation}
               onHeadingClick={() => toggleSection(setOpenSections, 'correlation')}
             >
+              <ProvenanceLabel provenance="AI" textLabel="Correlation suggestion" description="Suggested interpretation of whether this standalone alert should be reviewed with related signals." compact />
               <p>{preview.correlation_status || 'No related alerts identified yet.'}</p>
               {relatedAlertSuggestion ? (
                 <div className="cg-inline-actions">

@@ -82,3 +82,10 @@
 | Resolution | Resolve all child alerts | Preserve child history and resolve children | Partially implemented | Needs live QA |
 | Resolution | Detach selected children | Detach selected alerts and keep them open | Partially implemented | Needs live QA |
 | Resolution | Reopen | Preserve last resolution and increment reopened count | Implemented | Pass |
+| AI-assisted field | Suggestion visible on focus | Empty focused field shows deterministic AI draft and hint | Implemented | Build verified |
+| AI-assisted field | Tab acceptance | First `Tab` accepts visible draft and keeps focus in field | Implemented | Needs live QA |
+| AI-assisted field | Typing after accept | Provenance changes to `AI-assisted · edited` | Implemented | Needs live QA |
+| AI-assisted field | Clearing active field | Suggestion returns while focus remains in field | Implemented | Needs live QA |
+| AI-assisted field | Escape dismissal | Suggestion dismisses for the current focus session | Implemented | Needs live QA |
+| AI-assisted field | Blur reset | Suggestion availability resets on refocus | Implemented | Needs live QA |
+| AI-assisted field | Provenance on submit | Saved note / classification / resolution / escalation stores draft provenance | Implemented | Needs live QA |

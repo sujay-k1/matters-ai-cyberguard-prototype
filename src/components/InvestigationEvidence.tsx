@@ -1,5 +1,6 @@
 import { Button, Tag, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@carbon/react';
 import type { EvidenceItem, IncludedAlertItem } from '../types/investigation';
+import { ProvenanceLabel } from './ProvenanceLabel';
 
 interface InvestigationEvidenceProps {
   alerts: IncludedAlertItem[];
@@ -58,8 +59,10 @@ export function InvestigationEvidence({
                 </div>
               </div>
               <div className="cg-investigation-ai-insight">
+                <ProvenanceLabel provenance="AI" textLabel="Correlation rationale" compact />
                 <p>{alert.linkingRationale}</p>
               </div>
+              <p className="cg-summary-line">{alert.relevanceSource ?? 'AI-assessed relevance'}</p>
               <div className="cg-investigation-action-row">
                 <Button
                   kind="ghost"
@@ -86,6 +89,7 @@ export function InvestigationEvidence({
 
       <section className="cg-investigation-pane">
         <h3>Evidence items</h3>
+        <ProvenanceLabel provenance="Normalized evidence" textLabel="Normalized evidence" compact />
         <div className="cg-investigation-table-shell">
           <Table size="sm" useZebraStyles={false}>
             <TableHead>

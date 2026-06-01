@@ -15,9 +15,14 @@
 - Do not restore the investigation `ModalFooter`.
 - No visible inert controls: wire, hide, or clearly disable them.
 - Hide or disable unavailable evidence actions instead of leaving dead-end buttons.
+- Label AI-authored analysis explicitly.
+- Do not label deterministic analytics or normalized/raw evidence as AI.
+- Use reusable AI-suggested field wrappers for analyst drafting flows.
+- Do not call external AI APIs.
 - Do not build a complex relationship graph.
 - Do not build a full hunt engine.
 - Run `npm run build` before committing.
 - Run the interaction audit before committing.
+- Run the AI provenance audit before committing.
 - Use Stitch MCP read-only.
 - Do not modify Stitch screens.

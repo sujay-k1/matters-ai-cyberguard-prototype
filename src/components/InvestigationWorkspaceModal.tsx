@@ -9,8 +9,10 @@ import {
   TabPanels,
   Tabs,
 } from '@carbon/react';
+import { buildAISuggestion } from '../data/aiDraftSuggestions';
 import { buildInvestigationContext } from '../data/investigationFixtures';
 import { makeActivityEntry } from '../hooks/useWorkflowState';
+import type { DraftProvenance } from '../types/ai';
 import type {
   HuntResult,
   InvestigationActivityItem,
@@ -61,7 +63,7 @@ interface InvestigationWorkspaceModalProps {
   onSyncEvidenceAttachment: (evidenceId: string) => void;
   onDetachAlertFromCase: (alertId: string) => void;
   onAttachAlertToCase: (alertId: string) => void;
-  onMoveAlertToCase: (alertId: string, destinationCaseId: string, reason: string) => void;
+  onMoveAlertToCase: (alertId: string, destinationCaseId: string, reason: string, draftProvenance?: DraftProvenance) => void;
   availableCases: Array<{ id: string; title: string; status: string; alertCount: number }>;
 }
 
@@ -95,27 +97,35 @@ export function InvestigationWorkspaceModal({
 }: InvestigationWorkspaceModalProps) {
   const context = useMemo(() => buildInvestigationContext(item), [item]);
   const [quickNote, setQuickNote] = useState('');
+  const [quickNoteProvenance, setQuickNoteProvenance] = useState<DraftProvenance | undefined>();
   const [noteDraft, setNoteDraft] = useState('');
+  const [noteDraftProvenance, setNoteDraftProvenance] = useState<DraftProvenance | undefined>();
   const [noteModalOpen, setNoteModalOpen] = useState(false);
   const [taskModalOpen, setTaskModalOpen] = useState(false);
   const [taskTitleDraft, setTaskTitleDraft] = useState('');
+  const [taskTitleDraftProvenance, setTaskTitleDraftProvenance] = useState<DraftProvenance | undefined>();
   const [taskOwnerDraft, setTaskOwnerDraft] = useState(currentAnalyst);
   const [taskAssignModalOpen, setTaskAssignModalOpen] = useState(false);
   const [taskAssignTargetId, setTaskAssignTargetId] = useState<string | null>(null);
   const [hypothesisModalOpen, setHypothesisModalOpen] = useState(false);
   const [hypothesisDraft, setHypothesisDraft] = useState('');
+  const [hypothesisDraftProvenance, setHypothesisDraftProvenance] = useState<DraftProvenance | undefined>();
   const [approvalModalOpen, setApprovalModalOpen] = useState(false);
   const [approvalApprover, setApprovalApprover] = useState('');
   const [approvalJustification, setApprovalJustification] = useState('');
+  const [approvalJustificationProvenance, setApprovalJustificationProvenance] = useState<DraftProvenance | undefined>();
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
   const [rejectComment, setRejectComment] = useState('');
+  const [rejectCommentProvenance, setRejectCommentProvenance] = useState<DraftProvenance | undefined>();
   const [failureModalOpen, setFailureModalOpen] = useState(false);
   const [failureReason, setFailureReason] = useState('');
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
+  const [cancelReasonProvenance, setCancelReasonProvenance] = useState<DraftProvenance | undefined>();
   const [moveAlertModalOpen, setMoveAlertModalOpen] = useState(false);
   const [moveAlertDestinationId, setMoveAlertDestinationId] = useState('');
   const [moveAlertReason, setMoveAlertReason] = useState('');
+  const [moveAlertReasonProvenance, setMoveAlertReasonProvenance] = useState<DraftProvenance | undefined>();
   const [huntOpen, setHuntOpen] = useState(false);
   const [selectedHuntIds, setSelectedHuntIds] = useState<string[]>([]);
   const [selectedEntityMode, setSelectedEntityMode] = useState<'overview' | 'activity' | 'baseline'>('overview');
@@ -134,20 +144,28 @@ export function InvestigationWorkspaceModal({
 
   useEffect(() => {
     setQuickNote('');
+    setQuickNoteProvenance(undefined);
     setNoteDraft('');
+    setNoteDraftProvenance(undefined);
     setTaskTitleDraft('');
+    setTaskTitleDraftProvenance(undefined);
     setTaskOwnerDraft(currentAnalyst);
     setTaskAssignModalOpen(false);
     setTaskAssignTargetId(null);
     setHypothesisModalOpen(false);
     setHypothesisDraft('');
+    setHypothesisDraftProvenance(undefined);
     setApprovalModalOpen(false);
+    setApprovalJustificationProvenance(undefined);
     setRejectModalOpen(false);
+    setRejectCommentProvenance(undefined);
     setFailureModalOpen(false);
     setCancelModalOpen(false);
+    setCancelReasonProvenance(undefined);
     setMoveAlertModalOpen(false);
     setMoveAlertDestinationId('');
     setMoveAlertReason('');
+    setMoveAlertReasonProvenance(undefined);
     setSelectedEntityMode('overview');
     setSelectedHuntIds([]);
     setDetachedAlertSnapshot(null);
@@ -226,19 +244,23 @@ export function InvestigationWorkspaceModal({
     }, options);
   };
 
-  const addNote = (text: string) => {
+  const addNote = (text: string, provenance = noteDraftProvenance) => {
     const note = {
       id: `note-${Date.now()}`,
       author: currentAnalyst,
       timestamp: 'Just now',
       text: text.trim(),
+      draftProvenance: provenance,
     };
+    const activityEntry = makeActivityEntry(currentAnalyst, 'Analyst', 'Comment added', note.text, {
+      draftProvenance: provenance,
+    });
     patchWorkspaceWithActivity(
       (current) => ({
         ...current,
         notes: [note, ...current.notes],
       }),
-      makeActivityEntry(currentAnalyst, 'Analyst', 'Comment added', note.text),
+      activityEntry,
     );
     onToast('success', 'Note added', `Added a note to ${item.id}.`);
   };
@@ -265,8 +287,11 @@ export function InvestigationWorkspaceModal({
       (current) => ({
         ...current,
         hypothesis: hypothesisDraft.trim(),
+        hypothesisProvenance: hypothesisDraftProvenance,
       }),
-      makeActivityEntry(currentAnalyst, 'Analyst', 'Hypothesis updated', hypothesisDraft.trim()),
+      makeActivityEntry(currentAnalyst, 'Analyst', 'Hypothesis updated', hypothesisDraft.trim(), {
+        draftProvenance: hypothesisDraftProvenance,
+      }),
     );
     setHypothesisModalOpen(false);
     onToast('success', 'Hypothesis saved', `Updated the current hypothesis for ${item.id}.`);
@@ -278,16 +303,22 @@ export function InvestigationWorkspaceModal({
       title: taskTitleDraft.trim(),
       owner: taskOwnerDraft,
       completed: false,
+      createdBy: 'Analyst' as const,
+      draftProvenance: taskTitleDraftProvenance,
     };
     patchWorkspaceWithActivity(
       (current) => ({
         ...current,
         tasks: [nextTask, ...current.tasks],
       }),
-      makeActivityEntry(currentAnalyst, 'Analyst', 'Task added', nextTask.title, { newValue: nextTask.owner }),
+      makeActivityEntry(currentAnalyst, 'Analyst', 'Task added', nextTask.title, {
+        newValue: nextTask.owner,
+        draftProvenance: taskTitleDraftProvenance,
+      }),
     );
     setTaskModalOpen(false);
     setTaskTitleDraft('');
+    setTaskTitleDraftProvenance(undefined);
     setTaskOwnerDraft(currentAnalyst);
     onToast('success', 'Task added', `${nextTask.title} added to the investigation plan.`);
   };
@@ -312,15 +343,17 @@ export function InvestigationWorkspaceModal({
   };
 
   const handleSubmitNoteModal = () => {
-    addNote(noteDraft);
+    addNote(noteDraft, noteDraftProvenance);
     setNoteDraft('');
+    setNoteDraftProvenance(undefined);
     setNoteModalOpen(false);
   };
 
   const handleAddQuickNote = () => {
     if (!quickNote.trim()) return;
-    addNote(quickNote);
+    addNote(quickNote, quickNoteProvenance);
     setQuickNote('');
+    setQuickNoteProvenance(undefined);
   };
 
   const updateTimelineRelevance = (eventId: string, relevance: 'Relevant' | 'Irrelevant' | 'Needs review') => {
@@ -385,7 +418,7 @@ export function InvestigationWorkspaceModal({
   const updateAlertRelevance = (alertId: string, relevance: 'Relevant' | 'Irrelevant' | 'Needs review') => {
     patchWorkspace((current) => ({
       ...current,
-      alerts: current.alerts.map((entry) => (entry.id === alertId ? { ...entry, relevance } : entry)),
+      alerts: current.alerts.map((entry) => (entry.id === alertId ? { ...entry, relevance, relevanceSource: 'Analyst verdict' } : entry)),
       activity: [
         makeActivityEntry(currentAnalyst, 'Analyst', 'Alert relevance updated', `${alertId} marked ${relevance.toLowerCase()}.`),
         ...current.activity,
@@ -427,9 +460,18 @@ export function InvestigationWorkspaceModal({
   };
 
   const updateActionState = (actionId: string, next: ResponseActionState, note?: string, extras?: Partial<InvestigationResponseAction>) => {
+    const draftProvenance =
+      next === 'Pending approval'
+        ? approvalJustificationProvenance
+        : next === 'Rejected'
+          ? rejectCommentProvenance
+          : next === 'Cancelled'
+            ? cancelReasonProvenance
+            : undefined;
     const activityEntry = makeActivityEntry(currentAnalyst, 'Analyst', 'Action state updated', `${actionId} moved to ${next}.`, {
       comment: note,
       newValue: next,
+      draftProvenance,
     });
     patchWorkspaceWithActivity(
       (current) => ({
@@ -441,6 +483,7 @@ export function InvestigationWorkspaceModal({
                 ...extras,
                 currentState: next,
                 note,
+                noteDraftProvenance: draftProvenance,
                 auditTimestamp: 'Just now',
                 history: [...(action.history ?? []), activityEntry],
               }
@@ -655,6 +698,7 @@ export function InvestigationWorkspaceModal({
                       item={item}
                       quickNote={quickNote}
                       onQuickNoteChange={setQuickNote}
+                      onQuickNoteProvenanceChange={setQuickNoteProvenance}
                       onAddQuickNote={handleAddQuickNote}
                       tasks={workspace.tasks}
                       onToggleTask={handleToggleTask}
@@ -729,8 +773,10 @@ export function InvestigationWorkspaceModal({
               <InvestigationRightRail
                 context={context}
                 hypothesis={workspace.hypothesis}
+                hypothesisProvenance={workspace.hypothesisProvenance}
                 onOpenHypothesisModal={() => {
                   setHypothesisDraft(workspace.hypothesis);
+                  setHypothesisDraftProvenance(workspace.hypothesisProvenance);
                   setHypothesisModalOpen(true);
                 }}
                 onEscalate={onOpenEscalate}
@@ -831,7 +877,9 @@ export function InvestigationWorkspaceModal({
         open={noteModalOpen}
         textAreaId="investigation-note-modal"
         value={noteDraft}
+        aiSuggestion={buildAISuggestion('general-comment', { item, investigationContext: context, workspace })}
         onChange={setNoteDraft}
+        onDraftProvenanceChange={setNoteDraftProvenance}
         onClose={() => setNoteModalOpen(false)}
         onSubmit={handleSubmitNoteModal}
       />
@@ -844,7 +892,9 @@ export function InvestigationWorkspaceModal({
         primaryButtonText="Save hypothesis"
         labelText="Hypothesis"
         placeholder="Summarize the current working hypothesis for this investigation"
+        aiSuggestion={buildAISuggestion('hypothesis', { item, investigationContext: context, workspace })}
         onChange={setHypothesisDraft}
+        onDraftProvenanceChange={setHypothesisDraftProvenance}
         onClose={() => setHypothesisModalOpen(false)}
         onSubmit={handleSaveHypothesis}
       />
@@ -855,8 +905,10 @@ export function InvestigationWorkspaceModal({
         title={taskTitleDraft}
         owner={taskOwnerDraft}
         owners={TASK_OWNERS}
+        taskTitleSuggestion={buildAISuggestion('task-title', { item, investigationContext: context, workspace })}
         onTitleChange={setTaskTitleDraft}
         onOwnerChange={setTaskOwnerDraft}
+        onTaskTitleProvenanceChange={setTaskTitleDraftProvenance}
         onClose={() => setTaskModalOpen(false)}
         onSubmit={handleAddTask}
       />
@@ -881,8 +933,10 @@ export function InvestigationWorkspaceModal({
         approver={approvalApprover}
         justification={approvalJustification}
         approvers={APPROVERS}
+        justificationSuggestion={selectedAction ? buildAISuggestion('approval-justification', { item, investigationContext: context, workspace, action: selectedAction }) : undefined}
         onApproverChange={setApprovalApprover}
         onJustificationChange={setApprovalJustification}
+        onJustificationProvenanceChange={setApprovalJustificationProvenance}
         onClose={() => setApprovalModalOpen(false)}
         onSubmit={() => {
           if (!selectedAction) return;
@@ -898,7 +952,9 @@ export function InvestigationWorkspaceModal({
       <ResponseRejectModal
         open={rejectModalOpen}
         value={rejectComment}
+        commentSuggestion={selectedAction ? buildAISuggestion('rejection-comment', { item, investigationContext: context, workspace, action: selectedAction }) : undefined}
         onChange={setRejectComment}
+        onCommentProvenanceChange={setRejectCommentProvenance}
         onClose={() => setRejectModalOpen(false)}
         onSubmit={() => {
           if (!selectedAction) return;
@@ -930,7 +986,9 @@ export function InvestigationWorkspaceModal({
         heading="Cancel action"
         label="Reason"
         primaryButtonText="Cancel action"
+        commentSuggestion={selectedAction ? buildAISuggestion('cancellation-reason', { item, investigationContext: context, workspace, action: selectedAction }) : undefined}
         onChange={setCancelReason}
+        onCommentProvenanceChange={setCancelReasonProvenance}
         onClose={() => setCancelModalOpen(false)}
         onSubmit={() => {
           if (!selectedAction) return;
@@ -959,14 +1017,21 @@ export function InvestigationWorkspaceModal({
           currentCaseLabel={`${item.id} — ${item.title}`}
           destinationCaseId={moveAlertDestinationId}
           reason={moveAlertReason}
+          reasonSuggestion={buildAISuggestion('move-alert-reason', {
+            item,
+            investigationContext: context,
+            workspace,
+            destinationCaseLabel: availableCases.find((entry) => entry.id === moveAlertDestinationId)?.title,
+          })}
           destinationOptions={availableCases
             .filter((entry) => entry.id !== item.id)
             .map((entry) => ({ id: entry.id, label: `${entry.id} — ${entry.title} (${entry.status} · ${entry.alertCount} alerts)` }))}
           onDestinationChange={setMoveAlertDestinationId}
           onReasonChange={setMoveAlertReason}
+          onReasonProvenanceChange={setMoveAlertReasonProvenance}
           onClose={() => setMoveAlertModalOpen(false)}
           onSubmit={() => {
-            onMoveAlertToCase(selectedAlert.id, moveAlertDestinationId, moveAlertReason.trim());
+            onMoveAlertToCase(selectedAlert.id, moveAlertDestinationId, moveAlertReason.trim(), moveAlertReasonProvenance);
             setMoveAlertModalOpen(false);
             patchWorkspace((current) => ({ ...current, selectedAlertId: null }));
             onToast('success', 'Alert moved', `${selectedAlert.id} moved to ${moveAlertDestinationId}.`);

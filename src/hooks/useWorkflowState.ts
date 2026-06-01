@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { buildInvestigationContext, createWorkspaceStateFromFixture } from '../data/investigationFixtures';
+import type { DraftProvenance } from '../types/ai';
 import type {
   ClassificationRecord,
   EscalationRecord,
@@ -87,7 +88,7 @@ export function useWorkflowState(baseItems: WorkItem[], currentAnalyst: string) 
   );
 
   const appendItemComment = useCallback(
-    (itemId: string, text: string, actor = currentAnalyst) => {
+    (itemId: string, text: string, actor = currentAnalyst, draftProvenance?: DraftProvenance) => {
       const item = getItemById(itemId);
       if (!item) return;
       updateItem(itemId, (entry) => ({
@@ -104,11 +105,11 @@ export function useWorkflowState(baseItems: WorkItem[], currentAnalyst: string) 
             workspace: {
               ...workspace,
               notes: [
-                { id: `note-${Date.now()}`, author: actor, timestamp: 'Just now', text },
+                { id: `note-${Date.now()}`, author: actor, timestamp: 'Just now', text, draftProvenance },
                 ...workspace.notes,
               ],
               activity: [
-                makeActivityEntry(actor, 'Analyst', 'Comment added', text),
+                makeActivityEntry(actor, 'Analyst', 'Comment added', text, { draftProvenance }),
                 ...workspace.activity,
               ],
             },
@@ -122,6 +123,7 @@ export function useWorkflowState(baseItems: WorkItem[], currentAnalyst: string) 
         actorType: 'Analyst',
         activityType: 'Comment added',
         description: text,
+        draftProvenance,
         result: 'Recorded',
       });
     },
@@ -293,7 +295,7 @@ export function useWorkflowState(baseItems: WorkItem[], currentAnalyst: string) 
   );
 
   const overrideSeverity = useCallback(
-    (itemId: string, severity: WorkItem['severity'], comment: string, actor = currentAnalyst) => {
+    (itemId: string, severity: WorkItem['severity'], comment: string, actor = currentAnalyst, draftProvenance?: DraftProvenance) => {
       const item = getItemById(itemId);
       if (!item) return;
       const previousSeverity = item.analystSeverityOverride?.previousSeverity ?? item.severity;
@@ -324,6 +326,7 @@ export function useWorkflowState(baseItems: WorkItem[], currentAnalyst: string) 
         previousValue: item.severity,
         newValue: severity,
         comment,
+        draftProvenance,
         result: 'Updated',
       });
     },
@@ -360,6 +363,7 @@ export function useWorkflowState(baseItems: WorkItem[], currentAnalyst: string) 
         description: `${itemId} classified as ${record.classification}.`,
         newValue: record.classification,
         comment: record.comment,
+        draftProvenance: record.commentProvenance,
         result: 'Updated',
       });
     },
@@ -367,7 +371,7 @@ export function useWorkflowState(baseItems: WorkItem[], currentAnalyst: string) 
   );
 
   const resolveItem = useCallback(
-    (itemId: string, resolution: ResolutionRecord, comment: string) => {
+    (itemId: string, resolution: ResolutionRecord, comment: string, draftProvenance?: DraftProvenance) => {
       const item = getItemById(itemId);
       if (!item) return;
       const workspace = getOrCreateWorkspace(item);
@@ -496,6 +500,7 @@ export function useWorkflowState(baseItems: WorkItem[], currentAnalyst: string) 
             description: `${alert.id} resolved with parent case ${itemId}.`,
             newValue: resolution.classification,
             comment,
+            draftProvenance,
             result: 'Resolved',
           });
         });
@@ -509,6 +514,7 @@ export function useWorkflowState(baseItems: WorkItem[], currentAnalyst: string) 
         description: resolution.resolutionSummary,
         newValue: resolution.classification,
         comment,
+        draftProvenance,
         result: 'Resolved',
       });
     },
@@ -516,7 +522,7 @@ export function useWorkflowState(baseItems: WorkItem[], currentAnalyst: string) 
   );
 
   const reopenItem = useCallback(
-    (itemId: string, status: WorkItem['status'], comment: string) => {
+    (itemId: string, status: WorkItem['status'], comment: string, draftProvenance?: DraftProvenance) => {
       const item = getItemById(itemId);
       if (!item) return;
       const previousResolution = item.resolution ?? workflowStateByItemId[itemId]?.workspace?.resolution;
@@ -544,6 +550,7 @@ export function useWorkflowState(baseItems: WorkItem[], currentAnalyst: string) 
                   comment,
                   previousValue: previousResolution?.resolutionSummary,
                   newValue: status,
+                  draftProvenance,
                 }),
                 ...workspace.activity,
               ],
@@ -571,6 +578,7 @@ export function useWorkflowState(baseItems: WorkItem[], currentAnalyst: string) 
         activityType: 'Escalation created',
         description: `${itemId} escalated to ${escalation.team}.`,
         comment: escalation.note,
+        draftProvenance: escalation.reasonProvenance ?? escalation.noteProvenance,
         result: escalation.urgency,
         newValue: escalation.notifyDataOwner ? 'Data-owner notification requested' : escalation.team,
       });
@@ -764,7 +772,7 @@ export function useWorkflowState(baseItems: WorkItem[], currentAnalyst: string) 
   );
 
   const moveAlertBetweenCases = useCallback(
-    (alertId: string, sourceCaseId: string, destinationCaseId: string, reason: string, actor = currentAnalyst) => {
+    (alertId: string, sourceCaseId: string, destinationCaseId: string, reason: string, actor = currentAnalyst, draftProvenance?: DraftProvenance) => {
       const detached = detachAlertFromCase(sourceCaseId, alertId, actor);
       const destination = getItemById(destinationCaseId);
       if (!detached || !destination) return;
@@ -774,7 +782,7 @@ export function useWorkflowState(baseItems: WorkItem[], currentAnalyst: string) 
         ...current,
         alerts: [alertEntry, ...current.alerts],
         activity: [
-          makeActivityEntry(actor, 'Analyst', 'Alert moved to case', `${alertId} moved into ${destinationCaseId}.`, { comment: reason }),
+          makeActivityEntry(actor, 'Analyst', 'Alert moved to case', `${alertId} moved into ${destinationCaseId}.`, { comment: reason, draftProvenance }),
           ...current.activity,
         ],
       }));

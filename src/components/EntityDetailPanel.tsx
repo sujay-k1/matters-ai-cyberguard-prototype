@@ -2,6 +2,7 @@ import { Button, Tag } from '@carbon/react';
 import { useEffect, useState } from 'react';
 import type { InvestigationEntity } from '../types/investigation';
 import { InvestigationDetailDialog } from './InvestigationDetailDialog';
+import { ProvenanceLabel } from './ProvenanceLabel';
 
 interface EntityDetailPanelProps {
   entity: InvestigationEntity | null;
@@ -89,6 +90,7 @@ export function EntityDetailPanel({
           <>
             <section>
               <h4>Profile summary</h4>
+              <ProvenanceLabel provenance="AI" textLabel="Entity risk summary" compact />
               <p>{entity.profileSummary}</p>
             </section>
             <section>
@@ -105,12 +107,14 @@ export function EntityDetailPanel({
             </section>
             <section>
               <h4>Suggested investigation checks</h4>
+              <ProvenanceLabel provenance="AI" textLabel="Suggested checks" compact />
               <ul>
                 {entity.suggestedChecks.map((entry) => <li key={entry}>{entry}</li>)}
               </ul>
             </section>
             <section>
               <h4>Response candidates</h4>
+              <ProvenanceLabel provenance="AI" textLabel="Suggested response candidates" compact />
               <ul>
                 {entity.responseCandidates.map((entry) => <li key={entry}>{entry}</li>)}
               </ul>
@@ -169,6 +173,7 @@ export function EntityDetailPanel({
         {mode === 'baseline' ? (
           <section>
             <h4>Baseline comparison</h4>
+            <ProvenanceLabel provenance="System-derived" textLabel="Baseline comparison" compact />
             <div className="cg-investigation-definition-list">
               {(entity.baselineSignals ?? []).map((entry) => (
                 <div key={entry.metric}>
@@ -185,7 +190,7 @@ export function EntityDetailPanel({
                 </div>
               ))}
             </div>
-            {!entity.baselineSignals?.length ? <p>{entity.baselineComparison}</p> : null}
+            {!entity.baselineSignals?.length ? <p>{resolveBaselineState(entity)}</p> : null}
           </section>
         ) : null}
     </InvestigationDetailDialog>
@@ -196,4 +201,14 @@ function riskTagType(riskLevel: string) {
   if (riskLevel === 'High') return 'red';
   if (riskLevel === 'Medium') return 'magenta';
   return 'gray';
+}
+
+function resolveBaselineState(entity: InvestigationEntity) {
+  if (/pending|in progress/i.test(entity.baselineComparison ?? '')) {
+    return 'Baseline comparison in progress. Historical reference signals are still being assembled for this entity.';
+  }
+  if (/external|partner|guest/i.test(entity.type)) {
+    return 'Insufficient historical data. The prototype does not have enough prior activity for this entity type to compare confidently.';
+  }
+  return 'Baseline comparison is not applicable for the currently captured entity context.';
 }

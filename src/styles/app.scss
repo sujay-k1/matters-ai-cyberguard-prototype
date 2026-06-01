@@ -278,6 +278,54 @@ body {
   color: #6f6f6f;
 }
 
+.cg-provenance-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0 0 0.5rem;
+}
+
+.cg-provenance-label .cds--tag {
+  min-height: 1.25rem;
+}
+
+.cg-provenance-label--system .cds--tag,
+.cg-provenance-label--normalized .cds--tag {
+  opacity: 0.9;
+}
+
+.cg-ai-suggested-field {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.cg-ai-suggested-field.has-suggestion :is(input, textarea)::placeholder {
+  color: #6f6f6f;
+  font-style: italic;
+}
+
+.cg-ai-suggested-field__hint,
+.cg-ai-suggested-field__draft-state,
+.cg-system-derived-note,
+.cg-inline-linklike {
+  font-size: 0.75rem;
+  color: #525252;
+}
+
+.cg-ai-suggested-field__hint {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.cg-inline-linklike {
+  border: 0;
+  background: transparent;
+  color: #0f62fe;
+  cursor: pointer;
+  padding: 0;
+}
+
 .cg-filter-flyout__content {
   padding: 0.75rem 1rem 1rem;
   overflow: auto;

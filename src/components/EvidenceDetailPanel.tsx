@@ -2,6 +2,7 @@ import { Button, Tag } from '@carbon/react';
 import { useState } from 'react';
 import type { EvidenceItem } from '../types/investigation';
 import { InvestigationDetailDialog } from './InvestigationDetailDialog';
+import { ProvenanceLabel } from './ProvenanceLabel';
 
 interface EvidenceDetailPanelProps {
   evidence: EvidenceItem | null;
@@ -102,6 +103,7 @@ export function EvidenceDetailPanel({
 
         <section>
           <h4>Description</h4>
+          <ProvenanceLabel provenance="Normalized evidence" textLabel="Normalized evidence summary" compact />
           <p>{evidence.description}</p>
         </section>
         <section>
@@ -121,6 +123,7 @@ export function EvidenceDetailPanel({
         {evidence.rawRecordAvailable ? (
           <section>
             <h4>Raw event</h4>
+            <ProvenanceLabel provenance="Raw evidence" textLabel="Raw source record" compact />
             <Button kind="ghost" size="sm" onClick={() => setShowRaw((current) => !current)}>
               {showRaw ? 'Hide raw JSON' : 'Show raw JSON'}
             </Button>

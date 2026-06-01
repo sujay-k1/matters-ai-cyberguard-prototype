@@ -1,5 +1,6 @@
 import { Tag } from '@carbon/react';
 import type { InvestigationActivityItem } from '../types/investigation';
+import { draftSourceLabel } from '../data/aiDraftSuggestions';
 
 interface InvestigationActivityProps {
   activity: InvestigationActivityItem[];
@@ -28,6 +29,7 @@ export function InvestigationActivity({ activity }: InvestigationActivityProps) 
             </p>
           ) : null}
           {entry.comment ? <p className="cg-summary-line">Comment: {entry.comment}</p> : null}
+          {entry.draftProvenance ? <p className="cg-summary-line">Draft source: {draftSourceLabel(entry.draftProvenance)}</p> : null}
         </article>
       ))}
     </div>

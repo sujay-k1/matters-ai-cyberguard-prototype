@@ -1,4 +1,5 @@
 import type { WorkItem } from './queue';
+import type { DraftProvenance } from './ai';
 
 export type InvestigationTabId =
   | 'summary'
@@ -32,6 +33,8 @@ export interface InvestigationTask {
   title: string;
   owner: string;
   completed: boolean;
+  createdBy?: 'AI' | 'Analyst' | 'System';
+  draftProvenance?: DraftProvenance;
 }
 
 export interface InvestigationNote {
@@ -39,6 +42,7 @@ export interface InvestigationNote {
   author: string;
   timestamp: string;
   text: string;
+  draftProvenance?: DraftProvenance;
 }
 
 export interface TimelineEvent {
@@ -88,6 +92,7 @@ export interface IncludedAlertItem {
   linkedEvidenceIds?: string[];
   relatedEntityIds?: string[];
   detectedAt?: string;
+  relevanceSource?: 'AI-assessed relevance' | 'Analyst verdict';
 }
 
 export interface InvestigationEntity {
@@ -153,6 +158,7 @@ export interface InvestigationResponseAction {
   dependencies?: string[];
   history?: InvestigationActivityItem[];
   note?: string;
+  noteDraftProvenance?: DraftProvenance;
 }
 
 export interface InvestigationActivityItem {
@@ -165,6 +171,7 @@ export interface InvestigationActivityItem {
   previousValue?: string;
   newValue?: string;
   comment?: string;
+  draftProvenance?: DraftProvenance;
 }
 
 export interface ResolutionRecord {
@@ -181,6 +188,15 @@ export interface ResolutionRecord {
   exceptionReason?: string;
   childAlertHandling: 'resolve-all' | 'detach-selected';
   detachedAlertIds?: string[];
+  fieldProvenance?: Partial<Record<
+    | 'resolutionSummary'
+    | 'rootCause'
+    | 'remediationSummary'
+    | 'residualRisk'
+    | 'finalComment'
+    | 'exceptionReason',
+    DraftProvenance
+  >>;
 }
 
 export interface ClassificationRecord {
@@ -191,6 +207,7 @@ export interface ClassificationRecord {
   duplicateCaseId?: string;
   exceptionOwner?: string;
   tuningFeedbackCreated?: boolean;
+  commentProvenance?: DraftProvenance;
 }
 
 export interface HuntResult {
@@ -213,6 +230,8 @@ export interface EscalationRecord {
   createdAt: string;
   taskOwner?: string;
   notifyDataOwner: boolean;
+  reasonProvenance?: DraftProvenance;
+  noteProvenance?: DraftProvenance;
 }
 
 export interface InvestigationPlaybook {
@@ -269,6 +288,7 @@ export interface InvestigationWorkspaceState {
   activity: InvestigationActivityItem[];
   classification?: WorkItemClassification;
   classificationRecord?: ClassificationRecord;
+  hypothesisProvenance?: DraftProvenance;
   resolution?: ResolutionRecord;
   lastResolution?: ResolutionRecord;
   escalations: EscalationRecord[];
@@ -296,4 +316,5 @@ export interface WorkflowActivityEvent extends InvestigationActivityItem {
   system?: string;
   riskType?: string;
   linkedActionId?: string;
+  draftProvenance?: DraftProvenance;
 }

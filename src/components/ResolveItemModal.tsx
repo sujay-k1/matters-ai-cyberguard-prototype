@@ -1,5 +1,7 @@
-import { Checkbox, Dropdown, Modal, TextArea } from '@carbon/react';
+import { Checkbox, Dropdown, Modal } from '@carbon/react';
 import type { IncludedAlertItem, WorkItemClassification } from '../types/investigation';
+import type { DraftProvenance } from '../types/ai';
+import { AISuggestedTextArea } from './AISuggestedTextArea';
 
 const CLASSIFICATIONS: WorkItemClassification[] = [
   'True positive — malicious activity',
@@ -29,6 +31,8 @@ interface ResolveItemModalProps {
   selectedRecipients: string[];
   warnings: string[];
   exceptionReason: string;
+  suggestions?: Partial<Record<'resolutionSummary' | 'rootCause' | 'remediationSummary' | 'residualRisk' | 'finalComment' | 'exceptionReason', string>>;
+  fieldProvenance?: Partial<Record<'resolutionSummary' | 'rootCause' | 'remediationSummary' | 'residualRisk' | 'finalComment' | 'exceptionReason', DraftProvenance>>;
   onClassificationChange: (value: WorkItemClassification) => void;
   onResolutionSummaryChange: (value: string) => void;
   onRootCauseChange: (value: string) => void;
@@ -40,6 +44,7 @@ interface ResolveItemModalProps {
   onToggleDetachedAlert: (alertId: string) => void;
   onToggleRecipient: (recipient: string) => void;
   onExceptionReasonChange: (value: string) => void;
+  onFieldProvenanceChange?: (field: 'resolutionSummary' | 'rootCause' | 'remediationSummary' | 'residualRisk' | 'finalComment' | 'exceptionReason', provenance: DraftProvenance) => void;
   onClose: () => void;
   onSubmit: () => void;
 }
@@ -63,6 +68,7 @@ export function ResolveItemModal(props: ResolveItemModalProps) {
     selectedRecipients,
     warnings,
     exceptionReason,
+    suggestions,
     onClassificationChange,
     onResolutionSummaryChange,
     onRootCauseChange,
@@ -74,6 +80,7 @@ export function ResolveItemModal(props: ResolveItemModalProps) {
     onToggleDetachedAlert,
     onToggleRecipient,
     onExceptionReasonChange,
+    onFieldProvenanceChange,
     onClose,
     onSubmit,
   } = props;
@@ -123,10 +130,10 @@ export function ResolveItemModal(props: ResolveItemModalProps) {
           itemToString={(item) => item?.label ?? ''}
           onChange={({ selectedItem }) => selectedItem && onClassificationChange(selectedItem.id as WorkItemClassification)}
         />
-        <TextArea id="resolve-summary" labelText="Resolution summary" rows={3} value={resolutionSummary} onChange={(event) => onResolutionSummaryChange(event.currentTarget.value)} />
-        <TextArea id="resolve-root-cause" labelText="Root cause" rows={3} value={rootCause} onChange={(event) => onRootCauseChange(event.currentTarget.value)} />
-        <TextArea id="resolve-remediation" labelText="Remediation summary" rows={3} value={remediationSummary} onChange={(event) => onRemediationSummaryChange(event.currentTarget.value)} />
-        <TextArea id="resolve-risk" labelText="Residual risk" rows={3} value={residualRisk} onChange={(event) => onResidualRiskChange(event.currentTarget.value)} />
+        <AISuggestedTextArea id="resolve-summary" labelText="Resolution summary" placeholder="Summarize the incident outcome and final state" aiSuggestion={suggestions?.resolutionSummary} rows={3} value={resolutionSummary} onChange={onResolutionSummaryChange} onProvenanceChange={(value) => onFieldProvenanceChange?.('resolutionSummary', value)} />
+        <AISuggestedTextArea id="resolve-root-cause" labelText="Root cause" placeholder="Describe the underlying cause" aiSuggestion={suggestions?.rootCause} rows={3} value={rootCause} onChange={onRootCauseChange} onProvenanceChange={(value) => onFieldProvenanceChange?.('rootCause', value)} />
+        <AISuggestedTextArea id="resolve-remediation" labelText="Remediation summary" placeholder="Describe the remediation steps completed" aiSuggestion={suggestions?.remediationSummary} rows={3} value={remediationSummary} onChange={onRemediationSummaryChange} onProvenanceChange={(value) => onFieldProvenanceChange?.('remediationSummary', value)} />
+        <AISuggestedTextArea id="resolve-risk" labelText="Residual risk" placeholder="Describe any remaining risk or monitoring needs" aiSuggestion={suggestions?.residualRisk} rows={3} value={residualRisk} onChange={onResidualRiskChange} onProvenanceChange={(value) => onFieldProvenanceChange?.('residualRisk', value)} />
         <Checkbox id="resolve-monitoring" labelText="Monitoring required" checked={monitoringRequired} onChange={(_, { checked }) => onMonitoringRequiredChange(Boolean(checked))} />
         <div className="cg-checkbox-grid">
           {recipients.map((recipient) => (
@@ -166,15 +173,18 @@ export function ResolveItemModal(props: ResolveItemModalProps) {
           </>
         ) : null}
         {exceptionRequired ? (
-          <TextArea
+          <AISuggestedTextArea
             id="resolve-exception-reason"
             labelText="Exception reason"
+            placeholder="Explain why resolution is proceeding with an analyst exception"
+            aiSuggestion={suggestions?.exceptionReason}
             rows={3}
             value={exceptionReason}
-            onChange={(event) => onExceptionReasonChange(event.currentTarget.value)}
+            onChange={onExceptionReasonChange}
+            onProvenanceChange={(value) => onFieldProvenanceChange?.('exceptionReason', value)}
           />
         ) : null}
-        <TextArea id="resolve-comment" labelText="Final analyst comment" rows={3} value={finalComment} onChange={(event) => onFinalCommentChange(event.currentTarget.value)} />
+        <AISuggestedTextArea id="resolve-comment" labelText="Final analyst comment" placeholder="Add the final analyst comment" aiSuggestion={suggestions?.finalComment} rows={3} value={finalComment} onChange={onFinalCommentChange} onProvenanceChange={(value) => onFieldProvenanceChange?.('finalComment', value)} />
       </div>
     </Modal>
   );

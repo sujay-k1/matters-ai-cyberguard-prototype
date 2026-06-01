@@ -121,11 +121,12 @@ export function buildInvestigationContext(item: WorkItem): InvestigationContext 
 export function createWorkspaceStateFromFixture(fixture: InvestigationFixture) {
   return {
     hypothesis: fixture.hypothesis,
-    tasks: fixture.recommendedChecks.map((task) => ({ ...task })),
-    notes: fixture.notes.map((note) => ({ ...note })),
+    hypothesisProvenance: 'AI-assisted' as const,
+    tasks: fixture.recommendedChecks.map((task) => ({ createdBy: 'AI' as const, draftProvenance: 'AI-assisted' as const, ...task })),
+    notes: fixture.notes.map((note) => ({ draftProvenance: 'Analyst-authored' as const, ...note })),
     timeline: fixture.timelineEvents.map((event) => ({ ...event, details: [...event.details] })),
     evidence: fixture.evidence.map((item) => ({ ...item, details: [...item.details] })),
-    alerts: fixture.alerts.map((alert) => ({ ...alert })),
+    alerts: fixture.alerts.map((alert) => ({ relevanceSource: 'AI-assessed relevance' as const, ...alert })),
     entities: fixture.entities.map((entity) => ({
       ...entity,
       permissions: [...entity.permissions],

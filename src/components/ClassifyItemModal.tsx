@@ -1,5 +1,7 @@
-import { Checkbox, Dropdown, Modal, TextInput, TextArea } from '@carbon/react';
+import { Checkbox, Dropdown, Modal, TextInput } from '@carbon/react';
 import type { WorkItemClassification } from '../types/investigation';
+import { AISuggestedTextArea } from './AISuggestedTextArea';
+import type { DraftProvenance } from '../types/ai';
 
 const CLASSIFICATIONS: WorkItemClassification[] = [
   'True positive — malicious activity',
@@ -19,8 +21,10 @@ interface ClassifyItemModalProps {
   duplicateCaseId: string;
   exceptionOwner: string;
   createTuningFeedback: boolean;
+  commentSuggestion?: string;
   onClassificationChange: (value: WorkItemClassification) => void;
   onCommentChange: (value: string) => void;
+  onCommentProvenanceChange?: (value: DraftProvenance) => void;
   onDuplicateCaseIdChange: (value: string) => void;
   onExceptionOwnerChange: (value: string) => void;
   onCreateTuningFeedbackChange: (checked: boolean) => void;
@@ -37,8 +41,10 @@ export function ClassifyItemModal(props: ClassifyItemModalProps) {
     duplicateCaseId,
     exceptionOwner,
     createTuningFeedback,
+    commentSuggestion,
     onClassificationChange,
     onCommentChange,
+    onCommentProvenanceChange,
     onDuplicateCaseIdChange,
     onExceptionOwnerChange,
     onCreateTuningFeedbackChange,
@@ -68,12 +74,15 @@ export function ClassifyItemModal(props: ClassifyItemModalProps) {
           itemToString={(item) => item?.label ?? ''}
           onChange={({ selectedItem }) => selectedItem && onClassificationChange(selectedItem.id as WorkItemClassification)}
         />
-        <TextArea
+        <AISuggestedTextArea
           id="classification-comment"
           labelText="Analyst comment"
+          placeholder="Summarize why this classification fits the current evidence"
+          aiSuggestion={commentSuggestion}
           rows={4}
           value={comment}
-          onChange={(event) => onCommentChange(event.currentTarget.value)}
+          onChange={onCommentChange}
+          onProvenanceChange={onCommentProvenanceChange}
         />
         {classification === 'Duplicate' ? (
           <TextInput

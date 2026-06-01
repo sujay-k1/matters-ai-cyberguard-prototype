@@ -1,4 +1,6 @@
-import { ComboBox, Modal, TextArea } from '@carbon/react';
+import { ComboBox, Modal } from '@carbon/react';
+import { AISuggestedTextArea } from './AISuggestedTextArea';
+import type { DraftProvenance } from '../types/ai';
 
 interface ResponseApprovalModalProps {
   open: boolean;
@@ -6,8 +8,10 @@ interface ResponseApprovalModalProps {
   justification: string;
   approvers: string[];
   heading?: string;
+  justificationSuggestion?: string;
   onApproverChange: (value: string) => void;
   onJustificationChange: (value: string) => void;
+  onJustificationProvenanceChange?: (value: DraftProvenance) => void;
   onClose: () => void;
   onSubmit: () => void;
 }
@@ -18,8 +22,10 @@ export function ResponseApprovalModal({
   justification,
   approvers,
   heading = 'Request approval',
+  justificationSuggestion,
   onApproverChange,
   onJustificationChange,
+  onJustificationProvenanceChange,
   onClose,
   onSubmit,
 }: ResponseApprovalModalProps) {
@@ -44,12 +50,15 @@ export function ResponseApprovalModal({
           itemToString={(item) => item ?? ''}
           onChange={({ selectedItem }) => onApproverChange(selectedItem ?? '')}
         />
-        <TextArea
+        <AISuggestedTextArea
           id="response-approval-justification"
           labelText="Justification"
+          placeholder="Add the reason this action should be approved"
+          aiSuggestion={justificationSuggestion}
           rows={4}
           value={justification}
-          onChange={(event) => onJustificationChange(event.currentTarget.value)}
+          onChange={onJustificationChange}
+          onProvenanceChange={onJustificationProvenanceChange}
         />
       </div>
     </Modal>

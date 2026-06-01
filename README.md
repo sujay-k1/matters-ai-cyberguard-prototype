@@ -96,3 +96,21 @@ https://github.com/sujay-k1/matters-ai-cyberguard-prototype
 - Overview, Activity Log, and workflow metrics are derived from local fixture state plus local analyst interactions
 - Resolve-with-exception, escalation, and approval flows are prototype-only governance interactions
 - Stitch references were used read-only and did not include dedicated filter-open or bulk-selection screens
+
+## AI provenance and AI-assisted drafting
+
+- AI-authored interpretation is now labeled explicitly instead of being blended with deterministic analytics or evidence.
+- Deterministic calculations such as containment and baseline comparison are labeled as system-derived rather than AI.
+- Normalized evidence and raw source records are visually distinguished from AI summaries and analyst-authored notes.
+- Key analyst text fields now support deterministic local draft suggestions with a `Tab to accept` interaction.
+- Accepted drafts track saved provenance as `AI-assisted` or `AI-assisted · edited` when the analyst changes the accepted text before saving.
+- Suggestions are generated locally from fixtures, playbooks, workflow state, and selected item context.
+- No external AI service or runtime LLM call is used anywhere in the prototype.
+
+Additional review states:
+- `/?state=ai-provenance-preview`
+- `/?state=ai-provenance-investigation`
+- `/?state=ai-suggestion-resolution`
+- `/?state=ai-suggestion-approval`
+- `/?state=system-derived-baseline`
+- `/?state=system-derived-containment`
