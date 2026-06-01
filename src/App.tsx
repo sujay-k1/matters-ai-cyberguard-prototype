@@ -133,6 +133,7 @@ function App() {
     syncTimelineAttachment,
     syncEvidenceAttachment,
     detachAlertFromCase,
+    attachAlertToCase,
     moveAlertBetweenCases,
     overviewMetrics,
   } = useWorkflowState(baseItems, CURRENT_ANALYST);
@@ -1488,6 +1489,7 @@ function App() {
           onSyncTimelineAttachment={(eventId) => syncTimelineAttachment(investigationItem.id, eventId)}
           onSyncEvidenceAttachment={(evidenceId) => syncEvidenceAttachment(investigationItem.id, evidenceId)}
           onDetachAlertFromCase={(alertId) => detachAlertFromCase(investigationItem.id, alertId)}
+          onAttachAlertToCase={(alertId) => attachAlertToCase(investigationItem.id, alertId)}
           onMoveAlertToCase={(alertId, destinationCaseId, reason) =>
             moveAlertBetweenCases(alertId, investigationItem.id, destinationCaseId, reason)
           }

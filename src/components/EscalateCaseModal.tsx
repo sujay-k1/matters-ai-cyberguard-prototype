@@ -44,10 +44,12 @@ export function EscalateCaseModal(props: EscalateCaseModalProps) {
   return (
     <Modal
       open={open}
+      className="cg-investigation-submodal"
       modalHeading="Escalate case"
       primaryButtonText="Create handoff"
       secondaryButtonText="Cancel"
       primaryButtonDisabled={!team.trim() || !urgency.trim() || !reason.trim()}
+      selectorPrimaryFocus="#escalate-reason"
       onRequestClose={onClose}
       onRequestSubmit={onSubmit}
     >

@@ -18,10 +18,12 @@ export function ResponseFailureModal({
   return (
     <Modal
       open={open}
+      className="cg-investigation-submodal"
       modalHeading="Mark action failed"
       primaryButtonText="Save failure"
       secondaryButtonText="Cancel"
       primaryButtonDisabled={!value.trim()}
+      selectorPrimaryFocus="#response-failure-reason"
       onRequestClose={onClose}
       onRequestSubmit={onSubmit}
     >

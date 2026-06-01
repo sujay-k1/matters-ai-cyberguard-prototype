@@ -25,6 +25,11 @@ export function InvestigationDetailDialog({
       onClose={onClose}
       containerClassName="cg-investigation-submodal__container"
       className="cg-investigation-submodal cg-investigation-detail-dialog"
+      selectorsFloatingMenus={[
+        '.cg-investigation-submodal',
+        '.cds--list-box__menu',
+        '.cds--overflow-menu-options',
+      ]}
       aria-label={ariaLabel}
       size="sm"
     >

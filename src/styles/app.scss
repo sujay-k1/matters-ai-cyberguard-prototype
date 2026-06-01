@@ -1206,6 +1206,12 @@ body {
   background: #ffffff;
 }
 
+.cg-investigation-pane {
+  box-shadow:
+    0 0.125rem 0.25rem rgb(0 0 0 / 6%),
+    0 0.5rem 1.25rem rgb(0 0 0 / 10%);
+}
+
 .cg-investigation-pane__header,
 .cg-investigation-panel__header {
   display: flex;
@@ -1236,6 +1242,11 @@ body {
   min-height: auto;
   padding: 0;
   font-size: 0.8125rem;
+}
+
+.cg-investigation-pane__body {
+  display: grid;
+  gap: 0.85rem;
 }
 
 .cg-investigation-pane > h3 + p,
@@ -1511,6 +1522,62 @@ body {
   gap: 1rem;
 }
 
+.cg-investigation-rail::after {
+  content: '';
+  display: block;
+  height: 11rem;
+}
+
+.cg-investigation-pane--rail-hover {
+  align-self: end;
+  position: sticky;
+  bottom: 1rem;
+  z-index: 3;
+  gap: 0;
+  overflow: hidden;
+  transition:
+    box-shadow 160ms ease,
+    transform 160ms ease;
+}
+
+.cg-investigation-pane--rail-hover .cg-investigation-pane__header {
+  margin-bottom: 0;
+}
+
+.cg-investigation-pane--rail-hover .cg-investigation-pane__body {
+  max-height: 0;
+  overflow: hidden auto;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  padding: 0;
+  transform: translateY(0.35rem);
+  transition:
+    max-height 220ms ease,
+    opacity 120ms ease,
+    visibility 120ms ease,
+    transform 180ms ease,
+    padding 220ms ease;
+}
+
+.cg-investigation-pane--rail-hover:hover,
+.cg-investigation-pane--rail-hover:focus-within {
+  transform: translateY(0);
+  box-shadow:
+    0 0.25rem 0.5rem rgb(0 0 0 / 8%),
+    0 0.875rem 2rem rgb(0 0 0 / 14%);
+}
+
+.cg-investigation-pane--rail-hover:hover .cg-investigation-pane__body,
+.cg-investigation-pane--rail-hover:focus-within .cg-investigation-pane__body {
+  max-height: min(18rem, calc(100vh - 20rem));
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transform: translateY(0);
+  padding: 0.85rem 0 1rem;
+}
+
 .cg-investigation-detail-dialog.cds--modal {
   z-index: 8200;
 }
@@ -1585,6 +1652,11 @@ body {
   line-height: 1.55;
 }
 
+.cg-empty-state {
+  margin: 0;
+  color: #6f6f6f;
+}
+
 .cg-investigation-detail-dialog__body ul {
   margin: 0;
   padding-left: 1rem;
@@ -1628,7 +1700,7 @@ body {
 
 
 .cg-investigation-submodal.cds--modal {
-  z-index: 8100;
+  z-index: 8300;
 }
 
 .cg-warning-list {

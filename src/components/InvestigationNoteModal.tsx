@@ -1,8 +1,10 @@
 import { Modal, TextArea } from '@carbon/react';
+import { useEffect } from 'react';
 
 interface InvestigationNoteModalProps {
   open: boolean;
   value: string;
+  textAreaId?: string;
   title?: string;
   primaryButtonText?: string;
   labelText?: string;
@@ -15,6 +17,7 @@ interface InvestigationNoteModalProps {
 export function InvestigationNoteModal({
   open,
   value,
+  textAreaId = 'investigation-note',
   title = 'Add note',
   primaryButtonText = 'Save note',
   labelText = 'Note',
@@ -23,11 +26,21 @@ export function InvestigationNoteModal({
   onClose,
   onSubmit,
 }: InvestigationNoteModalProps) {
+  useEffect(() => {
+    if (!open) return;
+    const frame = window.requestAnimationFrame(() => {
+      const element = document.getElementById(textAreaId) as HTMLTextAreaElement | null;
+      element?.focus();
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [open, textAreaId]);
+
   return (
     <Modal
       open={open}
       className="cg-investigation-submodal"
       modalHeading={title}
+      selectorPrimaryFocus={`#${textAreaId}`}
       primaryButtonText={primaryButtonText}
       secondaryButtonText="Cancel"
       primaryButtonDisabled={!value.trim()}
@@ -35,7 +48,7 @@ export function InvestigationNoteModal({
       onRequestSubmit={onSubmit}
     >
       <TextArea
-        id="investigation-note"
+        id={textAreaId}
         labelText={labelText}
         placeholder={placeholder}
         rows={5}

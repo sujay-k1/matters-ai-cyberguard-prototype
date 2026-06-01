@@ -53,21 +53,23 @@ export function InvestigationRightRail({
         </div>
       </section>
 
-      <section className="cg-investigation-pane">
+      <section className="cg-investigation-pane cg-investigation-pane--rail-hover">
         <div className="cg-investigation-pane__header">
           <h3>Case handoff</h3>
           <Button kind="ghost" size="sm" onClick={onEscalate}>
             Escalate
           </Button>
         </div>
-        <div className="cg-investigation-definition-list">
-          <div>
-            <dt>Data owner</dt>
-            <dd>{context.fixture.dataOwner}</dd>
-          </div>
-          <div>
-            <dt>Handoff teams</dt>
-            <dd>{context.fixture.handoffTeams.join(', ')}</dd>
+        <div className="cg-investigation-pane__body">
+          <div className="cg-investigation-definition-list">
+            <div>
+              <dt>Data owner</dt>
+              <dd>{context.fixture.dataOwner}</dd>
+            </div>
+            <div>
+              <dt>Handoff teams</dt>
+              <dd>{context.fixture.handoffTeams.join(', ')}</dd>
+            </div>
           </div>
         </div>
       </section>

@@ -121,36 +121,48 @@ export function EntityDetailPanel({
           <>
             <section>
               <h4>Related activity</h4>
-              <ul>
-                {(entity.recentActivity ?? relatedTimeline).map((entry) => (
-                  <li key={entry.id}>
-                    <strong>{entry.timestamp} · {entry.source}</strong> — {entry.title}
-                    <p>{entry.detail}</p>
-                    {entry.evidenceId && onOpenEvidence ? (
-                      <Button kind="ghost" size="sm" onClick={() => onOpenEvidence(entry.evidenceId!)}>
-                        Open evidence
-                      </Button>
-                    ) : null}
-                  </li>
-                ))}
-              </ul>
+              {(entity.recentActivity ?? relatedTimeline).length ? (
+                <ul>
+                  {(entity.recentActivity ?? relatedTimeline).map((entry) => (
+                    <li key={entry.id}>
+                      <strong>{entry.timestamp} · {entry.source}</strong> — {entry.title}
+                      <p>{entry.detail}</p>
+                      {entry.evidenceId && onOpenEvidence ? (
+                        <Button kind="ghost" size="sm" onClick={() => onOpenEvidence(entry.evidenceId!)}>
+                          Open evidence
+                        </Button>
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="cg-empty-state">No related activity captured for this entity.</p>
+              )}
             </section>
             <section>
               <h4>Related evidence</h4>
-              <ul>
-                {relatedEvidence.map((entry) => (
-                  <li key={entry.id}>
-                    <strong>{entry.id}</strong> — {entry.sourceSystem} — {entry.verdict}
-                    <p>{entry.description}</p>
-                  </li>
-                ))}
-              </ul>
+              {relatedEvidence.length ? (
+                <ul>
+                  {relatedEvidence.map((entry) => (
+                    <li key={entry.id}>
+                      <strong>{entry.id}</strong> — {entry.sourceSystem} — {entry.verdict}
+                      <p>{entry.description}</p>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="cg-empty-state">No related evidence captured for this entity.</p>
+              )}
             </section>
             <section>
               <h4>Related alerts</h4>
-              <ul>
-                {relatedAlerts.map((entry) => <li key={entry.id}>{entry.id} — {entry.title}</li>)}
-              </ul>
+              {relatedAlerts.length ? (
+                <ul>
+                  {relatedAlerts.map((entry) => <li key={entry.id}>{entry.id} — {entry.title}</li>)}
+                </ul>
+              ) : (
+                <p className="cg-empty-state">No related alerts captured for this entity.</p>
+              )}
             </section>
           </>
         ) : null}

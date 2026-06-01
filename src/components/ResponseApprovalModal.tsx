@@ -26,10 +26,12 @@ export function ResponseApprovalModal({
   return (
     <Modal
       open={open}
+      className="cg-investigation-submodal"
       modalHeading={heading}
       primaryButtonText="Submit request"
       secondaryButtonText="Cancel"
       primaryButtonDisabled={!approver.trim() || !justification.trim()}
+      selectorPrimaryFocus="#response-approval-justification"
       onRequestClose={onClose}
       onRequestSubmit={onSubmit}
     >

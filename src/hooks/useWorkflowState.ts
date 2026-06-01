@@ -696,6 +696,44 @@ export function useWorkflowState(baseItems: WorkItem[], currentAnalyst: string) 
     [appendGlobalActivity, currentAnalyst, getItemById, getOrCreateWorkspace, updateWorkspaceState],
   );
 
+  const attachAlertToCase = useCallback(
+    (destinationCaseId: string, alertId: string, actor = currentAnalyst) => {
+      const destination = getItemById(destinationCaseId);
+      const standalone = getItemById(alertId);
+      if (!destination || !standalone) return null;
+      const destinationWorkspace = getOrCreateWorkspace(destination);
+      const alertEntry = buildAlertEntryFromItem(standalone, destinationCaseId);
+      updateWorkspaceState(destination, (current) => ({
+        ...current,
+        alerts: [alertEntry, ...current.alerts],
+        activity: [
+          makeActivityEntry(actor, 'Analyst', 'Alert attached', `${alertId} attached to ${destinationCaseId}.`),
+          ...current.activity,
+        ],
+      }));
+      setItems((current) =>
+        current
+          .filter((entry) => entry.id !== alertId)
+          .map((entry) =>
+            entry.id === destinationCaseId
+              ? syncCaseComposition(entry, [alertEntry, ...destinationWorkspace.alerts], actor)
+              : entry,
+          ),
+      );
+      appendGlobalActivity(destination, {
+        id: `activity-${Date.now()}-${alertId}`,
+        timestamp: 'Just now',
+        actor,
+        actorType: 'Analyst',
+        activityType: 'Alert attached',
+        description: `${alertId} attached to ${destinationCaseId}.`,
+        result: 'Attached',
+      });
+      return alertEntry;
+    },
+    [appendGlobalActivity, currentAnalyst, getItemById, getOrCreateWorkspace, updateWorkspaceState],
+  );
+
   const moveAlertBetweenCases = useCallback(
     (alertId: string, sourceCaseId: string, destinationCaseId: string, reason: string, actor = currentAnalyst) => {
       const detached = detachAlertFromCase(sourceCaseId, alertId, actor);
@@ -744,6 +782,7 @@ export function useWorkflowState(baseItems: WorkItem[], currentAnalyst: string) 
     syncTimelineAttachment,
     syncEvidenceAttachment,
     detachAlertFromCase,
+    attachAlertToCase,
     moveAlertBetweenCases,
     overviewMetrics,
   };

@@ -49,10 +49,12 @@ export function ClassifyItemModal(props: ClassifyItemModalProps) {
   return (
     <Modal
       open={open}
+      className="cg-investigation-submodal"
       modalHeading={itemId ? `Classify ${itemId}` : 'Classify item'}
       primaryButtonText="Save classification"
       secondaryButtonText="Cancel"
       primaryButtonDisabled={!comment.trim()}
+      selectorPrimaryFocus="#classification-comment"
       onRequestClose={onClose}
       onRequestSubmit={onSubmit}
     >

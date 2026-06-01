@@ -10,7 +10,7 @@ interface AlertDetailPanelProps {
   onClose: () => void;
   onToggleRelevance: () => void;
   onAddNote: () => void;
-  onDetach: () => void;
+  onToggleAttachment: () => void;
   onMoveToCase: () => void;
   onOpenEvidence?: (evidenceId: string) => void;
   onOpenEntity?: (entityId: string) => void;
@@ -25,7 +25,7 @@ export function AlertDetailPanel({
   onClose,
   onToggleRelevance,
   onAddNote,
-  onDetach,
+  onToggleAttachment,
   onMoveToCase,
   onOpenEvidence,
   onOpenEntity,
@@ -45,8 +45,8 @@ export function AlertDetailPanel({
           <Button kind="ghost" size="sm" onClick={onToggleRelevance}>
             {alert.relevance === 'Relevant' ? 'Mark irrelevant' : 'Mark relevant'}
           </Button>
-          <Button kind="ghost" size="sm" onClick={onDetach}>
-            Detach from case
+          <Button kind="ghost" size="sm" onClick={onToggleAttachment}>
+            {alert.parentCaseId ? 'Detach from case' : 'Attach to case'}
           </Button>
           <Button kind="ghost" size="sm" onClick={onMoveToCase}>
             Move to another case
@@ -74,50 +74,62 @@ export function AlertDetailPanel({
         </div>
         <section>
           <h4>Linked activity</h4>
-          <ul>
-            {relatedTimeline.map((entry) => (
-              <li key={entry.id}>
-                <strong>{entry.timestamp} · {entry.systemName}</strong> — {entry.title}
-                <p>{entry.entity} · {entry.relevance}</p>
-                {entry.evidenceId && onOpenEvidence ? (
-                  <Button kind="ghost" size="sm" onClick={() => onOpenEvidence(entry.evidenceId!)}>
-                    Open evidence
-                  </Button>
-                ) : null}
-              </li>
-            ))}
-          </ul>
+          {relatedTimeline.length ? (
+            <ul>
+              {relatedTimeline.map((entry) => (
+                <li key={entry.id}>
+                  <strong>{entry.timestamp} · {entry.systemName}</strong> — {entry.title}
+                  <p>{entry.entity} · {entry.relevance}</p>
+                  {entry.evidenceId && onOpenEvidence ? (
+                    <Button kind="ghost" size="sm" onClick={() => onOpenEvidence(entry.evidenceId!)}>
+                      Open evidence
+                    </Button>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="cg-empty-state">No linked timeline activity captured for this alert.</p>
+          )}
         </section>
         <section>
           <h4>Evidence</h4>
-          <ul>
-            {relatedEvidence.map((entry) => (
-              <li key={entry.id}>
-                <strong>{entry.id}</strong> — {entry.eventType} — {entry.sourceSystem}
-                <p>{entry.entity} · {entry.verdict} · {entry.attached ? 'Attached' : 'Detached'}</p>
-                {onOpenEvidence ? (
-                  <Button kind="ghost" size="sm" onClick={() => onOpenEvidence(entry.id)}>
-                    Open evidence
-                  </Button>
-                ) : null}
-              </li>
-            ))}
-          </ul>
+          {relatedEvidence.length ? (
+            <ul>
+              {relatedEvidence.map((entry) => (
+                <li key={entry.id}>
+                  <strong>{entry.id}</strong> — {entry.eventType} — {entry.sourceSystem}
+                  <p>{entry.entity} · {entry.verdict} · {entry.attached ? 'Attached' : 'Detached'}</p>
+                  {onOpenEvidence ? (
+                    <Button kind="ghost" size="sm" onClick={() => onOpenEvidence(entry.id)}>
+                      Open evidence
+                    </Button>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="cg-empty-state">No linked evidence captured for this alert.</p>
+          )}
         </section>
         <section>
           <h4>Related entities</h4>
-          <ul>
-            {relatedEntities.map((entry) => (
-              <li key={entry.id}>
-                <strong>{entry.displayName}</strong> — {entry.type} · {entry.roleInCase} · {entry.riskLevel}
-                {onOpenEntity ? (
-                  <Button kind="ghost" size="sm" onClick={() => onOpenEntity(entry.id)}>
-                    Open entity
-                  </Button>
-                ) : null}
-              </li>
-            ))}
-          </ul>
+          {relatedEntities.length ? (
+            <ul>
+              {relatedEntities.map((entry) => (
+                <li key={entry.id}>
+                  <strong>{entry.displayName}</strong> — {entry.type} · {entry.roleInCase} · {entry.riskLevel}
+                  {onOpenEntity ? (
+                    <Button kind="ghost" size="sm" onClick={() => onOpenEntity(entry.id)}>
+                      Open entity
+                    </Button>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="cg-empty-state">No related entities captured for this alert.</p>
+          )}
         </section>
     </InvestigationDetailDialog>
   );

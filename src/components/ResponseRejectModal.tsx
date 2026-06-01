@@ -24,10 +24,12 @@ export function ResponseRejectModal({
   return (
     <Modal
       open={open}
+      className="cg-investigation-submodal"
       modalHeading={heading}
       primaryButtonText={primaryButtonText}
       secondaryButtonText="Cancel"
       primaryButtonDisabled={!value.trim()}
+      selectorPrimaryFocus="#response-reject-comment"
       onRequestClose={onClose}
       onRequestSubmit={onSubmit}
     >

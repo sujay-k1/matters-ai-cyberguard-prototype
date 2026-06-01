@@ -28,10 +28,12 @@ export function MoveAlertToCaseModal({
   return (
     <Modal
       open={open}
+      className="cg-investigation-submodal"
       modalHeading="Move alert to another case"
       primaryButtonText="Move alert"
       secondaryButtonText="Cancel"
       primaryButtonDisabled={!destinationCaseId || !reason.trim()}
+      selectorPrimaryFocus="#move-alert-reason"
       onRequestClose={onClose}
       onRequestSubmit={onSubmit}
     >

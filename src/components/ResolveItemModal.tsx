@@ -94,10 +94,12 @@ export function ResolveItemModal(props: ResolveItemModalProps) {
   return (
     <Modal
       open={open}
+      className="cg-investigation-submodal"
       modalHeading={itemId ? `Resolve ${itemId}` : 'Resolve item'}
       primaryButtonText={exceptionRequired ? 'Resolve with exception' : 'Resolve item'}
       secondaryButtonText="Cancel"
       primaryButtonDisabled={disabled}
+      selectorPrimaryFocus="#resolve-summary"
       onRequestClose={onClose}
       onRequestSubmit={onSubmit}
     >

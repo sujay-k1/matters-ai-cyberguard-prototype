@@ -10,6 +10,7 @@ interface InvestigationTimelineProps {
   onOpenAlert: (alertId: string) => void;
   onAttachToggle: (eventId: string) => void;
   onAddNote: () => void;
+  onOpenSourceSystem: (eventId: string) => void;
 }
 
 const activityTypeOptions = ['All activity', 'Identity', 'Snowflake', 'Endpoint', 'Network', 'Analyst action'];
@@ -21,6 +22,7 @@ export function InvestigationTimeline({
   onOpenAlert,
   onAttachToggle,
   onAddNote,
+  onOpenSourceSystem,
 }: InvestigationTimelineProps) {
   const [searchValue, setSearchValue] = useState('');
   const [activityType, setActivityType] = useState(activityTypeOptions[0]);
@@ -148,6 +150,9 @@ export function InvestigationTimeline({
               </Button>
               <Button kind="ghost" size="sm" onClick={onAddNote}>
                 Add note
+              </Button>
+              <Button kind="ghost" size="sm" onClick={() => onOpenSourceSystem(event.id)}>
+                Open in source system
               </Button>
               <Button
                 kind="ghost"

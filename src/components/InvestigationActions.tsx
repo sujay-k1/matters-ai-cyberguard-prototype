@@ -98,9 +98,11 @@ export function InvestigationActions({
                     <Button kind="ghost" size="sm" onClick={() => onSecondaryAction(action)}>
                       {secondaryActionLabel(action)}
                     </Button>
-                    <Button kind="secondary" size="sm" onClick={() => onPrimaryAction(action)}>
-                      {primaryActionLabel(action)}
-                    </Button>
+                    {primaryActionLabel(action) !== 'View details' ? (
+                      <Button kind="secondary" size="sm" onClick={() => onPrimaryAction(action)}>
+                        {primaryActionLabel(action)}
+                      </Button>
+                    ) : null}
                     <Button kind="ghost" size="sm" onClick={onAddNote}>
                       Add note
                     </Button>
