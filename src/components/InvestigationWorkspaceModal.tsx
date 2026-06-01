@@ -34,6 +34,7 @@ import { InvestigationRightRail } from './InvestigationRightRail';
 import { InvestigationSummary } from './InvestigationSummary';
 import { InvestigationTaskModal } from './InvestigationTaskModal';
 import { InvestigationTimeline } from './InvestigationTimeline';
+import { MoveAlertToCaseModal } from './MoveAlertToCaseModal';
 import { ResponseActionDetailPanel } from './ResponseActionDetailPanel';
 import { ResponseApprovalModal } from './ResponseApprovalModal';
 import { ResponseFailureModal } from './ResponseFailureModal';
@@ -56,6 +57,11 @@ interface InvestigationWorkspaceModalProps {
   onOpenEscalate: () => void;
   onToast: (kind: 'success' | 'info' | 'warning', title: string, subtitle: string) => void;
   onWorkspaceChange: (updater: (workspace: InvestigationWorkspaceState) => InvestigationWorkspaceState, options?: { logContainmentChange?: boolean }) => void;
+  onSyncTimelineAttachment: (eventId: string) => void;
+  onSyncEvidenceAttachment: (evidenceId: string) => void;
+  onDetachAlertFromCase: (alertId: string) => void;
+  onMoveAlertToCase: (alertId: string, destinationCaseId: string, reason: string) => void;
+  availableCases: Array<{ id: string; title: string; status: string; alertCount: number }>;
 }
 
 const TAB_ORDER: InvestigationTabId[] = ['summary', 'timeline', 'evidence', 'entities', 'actions', 'activity'];
@@ -79,6 +85,11 @@ export function InvestigationWorkspaceModal({
   onOpenEscalate,
   onToast,
   onWorkspaceChange,
+  onSyncTimelineAttachment,
+  onSyncEvidenceAttachment,
+  onDetachAlertFromCase,
+  onMoveAlertToCase,
+  availableCases,
 }: InvestigationWorkspaceModalProps) {
   const context = useMemo(() => buildInvestigationContext(item), [item]);
   const [quickNote, setQuickNote] = useState('');
@@ -100,8 +111,12 @@ export function InvestigationWorkspaceModal({
   const [failureReason, setFailureReason] = useState('');
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
+  const [moveAlertModalOpen, setMoveAlertModalOpen] = useState(false);
+  const [moveAlertDestinationId, setMoveAlertDestinationId] = useState('');
+  const [moveAlertReason, setMoveAlertReason] = useState('');
   const [huntOpen, setHuntOpen] = useState(false);
   const [selectedHuntIds, setSelectedHuntIds] = useState<string[]>([]);
+  const [selectedEntityMode, setSelectedEntityMode] = useState<'overview' | 'activity' | 'baseline'>('overview');
   const panelsScrollRef = useRef<HTMLDivElement | null>(null);
   const tabScrollPositionsRef = useRef<Record<InvestigationTabId, number>>({
     summary: 0,
@@ -126,6 +141,10 @@ export function InvestigationWorkspaceModal({
     setRejectModalOpen(false);
     setFailureModalOpen(false);
     setCancelModalOpen(false);
+    setMoveAlertModalOpen(false);
+    setMoveAlertDestinationId('');
+    setMoveAlertReason('');
+    setSelectedEntityMode('overview');
     setSelectedHuntIds([]);
     tabScrollPositionsRef.current = {
       summary: 0,
@@ -275,13 +294,13 @@ export function InvestigationWorkspaceModal({
   };
 
   const toggleTimelineAttachment = (eventId: string) => {
-    patchWorkspace((current) => ({
-      ...current,
-      timeline: current.timeline.map((event) =>
-        event.id === eventId ? { ...event, attached: event.attached === false ? true : false } : event,
-      ),
-    }));
-    appendActivity(makeActivityEntry(currentAnalyst, 'Analyst', 'Timeline attachment changed', `${eventId} attachment updated.`));
+    const event = workspace.timeline.find((entry) => entry.id === eventId);
+    onSyncTimelineAttachment(eventId);
+    onToast(
+      'info',
+      event?.attached === false ? 'Timeline event attached' : 'Timeline event detached',
+      `${eventId} ${event?.attached === false ? 'attached to' : 'detached from'} case.`,
+    );
   };
 
   const updateEvidenceVerdict = (evidenceId: string, verdict: 'Relevant' | 'Irrelevant' | 'Needs review') => {
@@ -294,11 +313,13 @@ export function InvestigationWorkspaceModal({
   };
 
   const toggleEvidenceAttached = (evidenceId: string) => {
-    patchWorkspace((current) => ({
-      ...current,
-      evidence: current.evidence.map((entry) => (entry.id === evidenceId ? { ...entry, attached: !entry.attached } : entry)),
-    }));
-    appendActivity(makeActivityEntry(currentAnalyst, 'Analyst', 'Evidence attachment changed', `${evidenceId} attachment updated.`));
+    const evidence = workspace.evidence.find((entry) => entry.id === evidenceId);
+    onSyncEvidenceAttachment(evidenceId);
+    onToast(
+      'info',
+      evidence?.attached ? 'Evidence detached' : 'Evidence attached',
+      `${evidenceId} ${evidence?.attached ? 'detached from' : 'attached to'} case.`,
+    );
   };
 
   const updateAlertRelevance = (alertId: string, relevance: 'Relevant' | 'Irrelevant' | 'Needs review') => {
@@ -313,12 +334,8 @@ export function InvestigationWorkspaceModal({
   const handleDetachAlert = (alertId: string) => {
     const alert = workspace.alerts.find((entry) => entry.id === alertId);
     if (!alert) return;
-    patchWorkspace((current) => ({
-      ...current,
-      alerts: current.alerts.filter((entry) => entry.id !== alertId),
-      selectedAlertId: current.selectedAlertId === alertId ? null : current.selectedAlertId,
-    }));
-    appendActivity(makeActivityEntry(currentAnalyst, 'Analyst', 'Alert detached', `${alertId} detached from ${item.id}.`));
+    onDetachAlertFromCase(alertId);
+    patchWorkspace((current) => ({ ...current, selectedAlertId: current.selectedAlertId === alertId ? null : current.selectedAlertId }));
     onToast('warning', 'Alert detached', `${alertId} was detached and remains open in the queue context.`);
   };
 
@@ -582,9 +599,16 @@ export function InvestigationWorkspaceModal({
                   <TabPanel>
                     <InvestigationEntities
                       entities={workspace.entities}
-                      onOpenEntity={(id) => patchWorkspace((current) => ({ ...current, selectedEntityId: id }))}
+                      onOpenEntity={(id) => {
+                        setSelectedEntityMode('overview');
+                        patchWorkspace((current) => ({ ...current, selectedEntityId: id }));
+                      }}
                       onGoHunt={() => setHuntOpen(true)}
                       onAddNote={() => setNoteModalOpen(true)}
+                      onCompareBaseline={(id) => {
+                        setSelectedEntityMode('baseline');
+                        patchWorkspace((current) => ({ ...current, selectedEntityId: id }));
+                      }}
                     />
                   </TabPanel>
                   <TabPanel>
@@ -617,16 +641,31 @@ export function InvestigationWorkspaceModal({
                 <EvidenceDetailPanel
                   evidence={selectedEvidence}
                   onClose={() => patchWorkspace((current) => ({ ...current, selectedEvidenceId: null }))}
-                  onToggleVerdict={(next) => updateEvidenceVerdict(selectedEvidence.id, next)}
+                  onToggleVerdict={() =>
+                    updateEvidenceVerdict(
+                      selectedEvidence.id,
+                      selectedEvidence.verdict === 'Relevant' ? 'Irrelevant' : 'Relevant',
+                    )
+                  }
                   onToggleAttached={() => toggleEvidenceAttached(selectedEvidence.id)}
                   onGoHunt={() => setHuntOpen(true)}
                   onAddNote={() => setNoteModalOpen(true)}
+                  onOpenRelatedAlert={(alertId) => {
+                    patchWorkspace((current) => ({ ...current, selectedAlertId: alertId, selectedEvidenceId: null }));
+                    onTabChange('evidence');
+                  }}
+                  onOpenSourceSystem={() => onToast('info', 'Prototype-only integration', 'Opening source systems is simulated in this prototype.')}
                 />
               ) : null}
 
               {selectedEntity ? (
                 <EntityDetailPanel
                   entity={selectedEntity}
+                  initialMode={selectedEntityMode}
+                  relatedTimeline={selectedEntity.recentActivity}
+                  relatedEvidence={workspace.evidence.filter((entry) => selectedEntity.relatedAssets.includes(entry.entity) || entry.entity === selectedEntity.displayName)}
+                  relatedAlerts={workspace.alerts.filter((entry) => selectedEntity.relatedAlertIds?.includes(entry.id)).map((entry) => ({ id: entry.id, title: entry.title }))}
+                  onOpenEvidence={(evidenceId) => patchWorkspace((current) => ({ ...current, selectedEvidenceId: evidenceId }))}
                   onClose={() => patchWorkspace((current) => ({ ...current, selectedEntityId: null }))}
                   onGoHunt={() => setHuntOpen(true)}
                   onAddNote={() => setNoteModalOpen(true)}
@@ -636,13 +675,39 @@ export function InvestigationWorkspaceModal({
               {selectedAlert ? (
                 <AlertDetailPanel
                   alert={selectedAlert}
+                  relatedTimeline={workspace.timeline.filter((entry) => entry.relatedAlert === selectedAlert.id)}
+                  relatedEvidence={workspace.evidence.filter((entry) => selectedAlert.linkedEvidenceIds?.includes(entry.id)).map((entry) => ({
+                    id: entry.id,
+                    eventType: entry.eventType,
+                    sourceSystem: entry.sourceSystem,
+                    entity: entry.entity,
+                    verdict: entry.verdict,
+                    attached: entry.attached,
+                  }))}
+                  relatedEntities={workspace.entities.filter((entry) => selectedAlert.relatedEntityIds?.includes(entry.id)).map((entry) => ({
+                    id: entry.id,
+                    displayName: entry.displayName,
+                    type: entry.type,
+                    roleInCase: entry.roleInCase,
+                    riskLevel: entry.riskLevel,
+                  }))}
                   onClose={() => patchWorkspace((current) => ({ ...current, selectedAlertId: null }))}
                   onToggleRelevance={() =>
                     updateAlertRelevance(selectedAlert.id, selectedAlert.relevance === 'Relevant' ? 'Irrelevant' : 'Relevant')
                   }
                   onAddNote={() => setNoteModalOpen(true)}
                   onDetach={() => handleDetachAlert(selectedAlert.id)}
-                  onMoveToCase={() => onToast('info', 'Move to case', 'Move-to-case workflow is intentionally lightweight in this prototype.')}
+                  onMoveToCase={() => {
+                    setMoveAlertDestinationId('');
+                    setMoveAlertReason('');
+                    setMoveAlertModalOpen(true);
+                  }}
+                  onOpenEvidence={(evidenceId) => patchWorkspace((current) => ({ ...current, selectedEvidenceId: evidenceId }))}
+                  onOpenEntity={(entityId) => {
+                    setSelectedEntityMode('overview');
+                    patchWorkspace((current) => ({ ...current, selectedEntityId: entityId }));
+                  }}
+                  onOpenSourceSystem={() => onToast('info', 'Prototype-only integration', 'Opening source systems is simulated in this prototype.')}
                 />
               ) : null}
 
@@ -783,6 +848,28 @@ export function InvestigationWorkspaceModal({
         onClose={() => setHuntOpen(false)}
         onAttachSelected={attachSelectedHuntResults}
       />
+
+      {selectedAlert ? (
+        <MoveAlertToCaseModal
+          open={moveAlertModalOpen}
+          alertId={selectedAlert.id}
+          currentCaseLabel={`${item.id} — ${item.title}`}
+          destinationCaseId={moveAlertDestinationId}
+          reason={moveAlertReason}
+          destinationOptions={availableCases
+            .filter((entry) => entry.id !== item.id)
+            .map((entry) => ({ id: entry.id, label: `${entry.id} — ${entry.title} (${entry.status} · ${entry.alertCount} alerts)` }))}
+          onDestinationChange={setMoveAlertDestinationId}
+          onReasonChange={setMoveAlertReason}
+          onClose={() => setMoveAlertModalOpen(false)}
+          onSubmit={() => {
+            onMoveAlertToCase(selectedAlert.id, moveAlertDestinationId, moveAlertReason.trim());
+            setMoveAlertModalOpen(false);
+            patchWorkspace((current) => ({ ...current, selectedAlertId: null }));
+            onToast('success', 'Alert moved', `${selectedAlert.id} moved to ${moveAlertDestinationId}.`);
+          }}
+        />
+      ) : null}
     </>
   );
 }

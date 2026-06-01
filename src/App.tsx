@@ -16,6 +16,7 @@ import { ClassifyItemModal } from './components/ClassifyItemModal';
 import { ColumnCustomizer } from './components/ColumnCustomizer';
 import { EscalateCaseModal } from './components/EscalateCaseModal';
 import { FilterPanel } from './components/FilterPanel';
+import { InvestigationNoteModal } from './components/InvestigationNoteModal';
 import { InvestigationWorkspaceModal } from './components/InvestigationWorkspaceModal';
 import { MergeReviewModal } from './components/MergeReviewModal';
 import { ModuleActivityLog } from './components/ModuleActivityLog';
@@ -39,6 +40,14 @@ import type {
   ToastMessage,
   WorkItem,
 } from './types/queue';
+
+type QueuePreset =
+  | 'critical-open'
+  | 'sla-breached'
+  | 'unassigned-p1'
+  | 'active-exposures'
+  | 'pending-approvals'
+  | 'failed-actions';
 
 const CURRENT_ANALYST = 'Priya Sharma';
 
@@ -114,10 +123,17 @@ function App() {
     assignItem,
     changeWorkflowStatus,
     overrideSeverity,
+    appendItemComment,
+    updateTags,
+    renameItem,
     classifyItem,
     resolveItem,
     reopenItem,
     addEscalation,
+    syncTimelineAttachment,
+    syncEvidenceAttachment,
+    detachAlertFromCase,
+    moveAlertBetweenCases,
     overviewMetrics,
   } = useWorkflowState(baseItems, CURRENT_ANALYST);
   const [activeTab, setActiveTab] = useState<QueueTab>('Work Queue');
@@ -185,6 +201,14 @@ function App() {
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const [destinationCaseId, setDestinationCaseId] = useState<string | null>(null);
   const [showShortcutOverlays, setShowShortcutOverlays] = useState(false);
+  const [queuePreset, setQueuePreset] = useState<QueuePreset | null>(null);
+  const [commentModalOpen, setCommentModalOpen] = useState(false);
+  const [itemCommentDraft, setItemCommentDraft] = useState('');
+  const [tagEditorOpen, setTagEditorOpen] = useState(false);
+  const [editableTags, setEditableTags] = useState<string[]>([]);
+  const [newTagDraft, setNewTagDraft] = useState('');
+  const [renameModalOpen, setRenameModalOpen] = useState(false);
+  const [renameDraft, setRenameDraft] = useState('');
 
   const queueSearchRef = useRef<HTMLInputElement | null>(null);
   const filterSearchRef = useRef<HTMLInputElement | null>(null);
@@ -223,8 +247,13 @@ function App() {
   }, [items, segment]);
 
   const filteredItems = useMemo(() => {
-    return filteredBySegment.filter((item) => matchesFilters(item, selectedFilters) && matchesSearch(item, queueSearch));
-  }, [filteredBySegment, queueSearch, selectedFilters]);
+    return filteredBySegment.filter(
+      (item) =>
+        matchesFilters(item, selectedFilters) &&
+        matchesSearch(item, queueSearch) &&
+        matchesQueuePreset(item, queuePreset, workflowStateByItemId),
+    );
+  }, [filteredBySegment, queuePreset, queueSearch, selectedFilters, workflowStateByItemId]);
 
   const sortedItems = useMemo(() => [...filteredItems].sort(sortItems(sortOptionId)), [filteredItems, sortOptionId]);
   const pagedItems = useMemo(() => sortedItems.slice((page - 1) * pageSize, page * pageSize), [page, pageSize, sortedItems]);
@@ -238,11 +267,11 @@ function App() {
 
   const segmentCounts = useMemo(
     () => ({
-      All: items.filter((item) => matchesFilters(item, selectedFilters) && matchesSearch(item, queueSearch)).length,
-      Cases: items.filter((item) => item.item_type === 'case' && matchesFilters(item, selectedFilters) && matchesSearch(item, queueSearch)).length,
-      Alerts: items.filter((item) => item.item_type === 'alert' && matchesFilters(item, selectedFilters) && matchesSearch(item, queueSearch)).length,
+      All: items.filter((item) => matchesFilters(item, selectedFilters) && matchesSearch(item, queueSearch) && matchesQueuePreset(item, queuePreset, workflowStateByItemId)).length,
+      Cases: items.filter((item) => item.item_type === 'case' && matchesFilters(item, selectedFilters) && matchesSearch(item, queueSearch) && matchesQueuePreset(item, queuePreset, workflowStateByItemId)).length,
+      Alerts: items.filter((item) => item.item_type === 'alert' && matchesFilters(item, selectedFilters) && matchesSearch(item, queueSearch) && matchesQueuePreset(item, queuePreset, workflowStateByItemId)).length,
     }),
-    [items, queueSearch, selectedFilters],
+    [items, queuePreset, queueSearch, selectedFilters, workflowStateByItemId],
   );
 
   const previewItem = items.find((item) => item.id === previewItemId) ?? null;
@@ -305,7 +334,18 @@ function App() {
         result: entry.newValue ?? entry.comment ?? 'Recorded',
       }));
     });
-    return [...workspaceEvents, ...globalActivityLog].sort((a, b) => b.id.localeCompare(a.id));
+    return [...workspaceEvents, ...globalActivityLog]
+      .filter(
+        (event, index, current) =>
+          current.findIndex(
+            (candidate) =>
+              candidate.itemId === event.itemId &&
+              candidate.activityType === event.activityType &&
+              candidate.description === event.description &&
+              candidate.timestamp === event.timestamp,
+          ) === index,
+      )
+      .sort((a, b) => b.id.localeCompare(a.id));
   }, [globalActivityLog, items, workflowStateByItemId]);
 
   useEffect(() => {
@@ -389,7 +429,7 @@ function App() {
       setPreviewItemId(heroCase?.id ?? null);
       setInvestigationItemId(heroCase?.id ?? null);
       setActiveInvestigationTab(
-        state === 'raw-evidence' ? 'evidence'
+        state === 'raw-evidence' ? 'timeline'
           : state === 'response-action' || state === 'pending-approval' || state === 'failed-action'
             ? 'actions'
             : 'summary',
@@ -401,6 +441,23 @@ function App() {
         setExceptionReason('Containment requires documented analyst exception.');
       }
       if (state === 'handoff') setEscalateModalOpen(true);
+      if ((state === 'response-action' || state === 'pending-approval' || state === 'failed-action') && heroCase) {
+        updateWorkspaceState(heroCase, (current) => ({
+          ...current,
+          selectedActionId:
+            state === 'pending-approval'
+              ? current.actions.find((entry) => entry.currentState === 'Pending approval')?.id ?? current.actions[0]?.id ?? null
+              : state === 'failed-action'
+                ? current.actions.find((entry) => entry.currentState === 'Failed')?.id ?? current.actions[0]?.id ?? null
+                : current.actions[0]?.id ?? null,
+        }));
+      }
+      if (state === 'raw-evidence' && heroCase) {
+        updateWorkspaceState(heroCase, (current) => ({
+          ...current,
+          selectedEvidenceId: current.evidence[0]?.id ?? null,
+        }));
+      }
     } else if (state === 'classification') {
       const firstAlert = items.find((item) => item.item_type === 'alert') ?? items[0];
       setActiveTab('Work Queue');
@@ -415,7 +472,7 @@ function App() {
 
   useEffect(() => {
     setPage(1);
-  }, [queueSearch, selectedFilters, segment, sortOptionId]);
+  }, [queuePreset, queueSearch, selectedFilters, segment, sortOptionId]);
 
   useEffect(() => {
     queueSearchRef.current = document.querySelector('#queue-search') as HTMLInputElement | null;
@@ -498,10 +555,6 @@ function App() {
     overrideSeverity(previewItem.id, pendingSeverity, severityComment.trim());
     setSeverityModalOpen(false);
     addToast('success', 'Severity override applied', `${previewItem.id} severity changed to ${pendingSeverity}.`);
-  };
-
-  const notifyPlaceholderAction = (title: string, subtitle: string) => {
-    addToast('info', title, subtitle);
   };
 
   const openInvestigationWorkspace = (itemId: string, tab: InvestigationTabId = 'summary') => {
@@ -691,7 +744,15 @@ function App() {
 
   const handleSubmitClassification = () => {
     if (!classificationTargetItem || !classificationComment.trim()) return;
-    classifyItem(classificationTargetItem.id, pendingClassification, classificationComment.trim());
+    classifyItem(classificationTargetItem.id, {
+      classification: pendingClassification,
+      comment: classificationComment.trim(),
+      updatedBy: CURRENT_ANALYST,
+      updatedAt: 'Just now',
+      duplicateCaseId: pendingClassification === 'Duplicate' ? duplicateCaseId.trim() : undefined,
+      exceptionOwner: pendingClassification === 'Accepted risk' ? exceptionOwner.trim() : undefined,
+      tuningFeedbackCreated: pendingClassification === 'False positive' ? createTuningFeedback : undefined,
+    });
     if (pendingClassification === 'False positive' && createTuningFeedback) {
       addToast('info', 'Detection feedback recorded', 'A lightweight detection-tuning feedback record was created locally.');
     }
@@ -721,6 +782,8 @@ function App() {
     return warnings;
   }, [childAlertHandling, classificationTargetItem, getOrCreateWorkspace]);
 
+  const resolvingWithException = resolutionWarnings.length > 0;
+
   const handleSubmitResolution = () => {
     if (!classificationTargetItem) return;
     const workspace = getOrCreateWorkspace(classificationTargetItem);
@@ -734,30 +797,12 @@ function App() {
       notificationRecipients: resolutionRecipients,
       resolvedBy: CURRENT_ANALYST,
       resolvedAt: 'Just now',
-      resolvedWithException: resolutionWarnings.length > 0,
-      exceptionReason: resolutionWarnings.length > 0 ? exceptionReason.trim() : undefined,
+      resolvedWithException: resolvingWithException,
+      exceptionReason: resolvingWithException ? exceptionReason.trim() : undefined,
       childAlertHandling,
       detachedAlertIds: childAlertHandling === 'detach-selected' ? detachedAlertIds : [],
     }, finalResolutionComment.trim());
-    if (classificationTargetItem.item_type === 'case' && childAlertHandling === 'detach-selected' && detachedAlertIds.length > 0) {
-      updateWorkspaceState(classificationTargetItem, (current) => ({
-        ...current,
-        alerts: current.alerts.filter((alert) => !detachedAlertIds.includes(alert.id)),
-      }));
-      setItems((current) =>
-        current.map((entry) =>
-          detachedAlertIds.includes(entry.id)
-            ? {
-                ...entry,
-                item_type: 'alert',
-                status: 'Investigating',
-                alert_count: null,
-              }
-            : entry,
-        ),
-      );
-    }
-    if (workspace.actions.some((action) => action.currentState === 'Pending approval')) {
+    if (resolvingWithException) {
       addToast('warning', 'Resolved with exception', `${classificationTargetItem.id} was resolved with an analyst exception.`);
     } else {
       addToast('success', 'Item resolved', `${classificationTargetItem.id} is now resolved.`);
@@ -774,6 +819,8 @@ function App() {
       note: escalationNote,
       createdBy: CURRENT_ANALYST,
       createdAt: 'Just now',
+      taskOwner: escalationTaskOwner || undefined,
+      notifyDataOwner,
     });
     if (escalationTaskOwner) {
       updateWorkspaceState(classificationTargetItem, (current) => ({
@@ -924,19 +971,10 @@ function App() {
             topSystems={topSystems}
             onOpenWorkQueuePreset={(preset) => {
               setActiveTab('Work Queue');
-              if (preset === 'critical-open') {
-                setSelectedFilters((current) => ({ ...current, severity: ['Critical'] }));
-              } else if (preset === 'sla-breached') {
-                setSelectedFilters((current) => ({ ...current, sla: ['Breached'] }));
-              } else if (preset === 'unassigned-p1') {
-                setSelectedFilters((current) => ({ ...current, assignee: ['Unassigned'], priority: ['P1'] }));
-              } else if (preset === 'active-exposures') {
-                setSelectedFilters((current) => ({ ...current, containment: ['Active exposure', 'Not contained'] }));
-              } else if (preset === 'pending-approvals') {
-                setQueueSearch('approval');
-              } else if (preset === 'failed-actions') {
-                setQueueSearch('failed');
-              }
+              setQueueSearch('');
+              setSelectedFilters({});
+              setQueuePreset(preset as QueuePreset);
+              setPage(1);
             }}
           />
         ) : null}
@@ -946,6 +984,7 @@ function App() {
             events={moduleActivityEvents}
             onOpenWorkItem={(itemId) => {
               setActiveTab('Work Queue');
+              setQueuePreset(null);
               setPreviewItemId(itemId);
             }}
           />
@@ -996,6 +1035,14 @@ function App() {
               <section className="cg-content-area">
                 <div className="cg-content-meta">
                   <span>{SORT_LABELS[sortOptionId]}</span>
+                  {queuePreset ? (
+                    <span className="cg-queue-preset-indicator">
+                      {formatQueuePreset(queuePreset)}
+                      <Button kind="ghost" size="sm" onClick={() => setQueuePreset(null)}>
+                        Clear preset
+                      </Button>
+                    </span>
+                  ) : null}
                   {selectedIds.length > 0 ? (
                     <Tag type="blue">{selectedIds.length} selected</Tag>
                   ) : null}
@@ -1063,24 +1110,33 @@ function App() {
                   onChangeStatus={openDrawerStatus}
                   onOpenInvestigation={() => openInvestigationWorkspace(previewItem.id)}
                   onChangeSeverity={openSeverityOverride}
-                  onAddComment={() =>
-                    notifyPlaceholderAction('Comment capture', 'Comment workflows will be added in the next phase.')
-                  }
-                  onEditTags={() =>
-                    notifyPlaceholderAction('Tag editing', 'Use the bulk Add tag flow to update tags in this prototype.')
-                  }
-                  onRenameCase={() =>
-                    notifyPlaceholderAction('Rename case', 'Case renaming will be added in the next phase.')
-                  }
+                  onAddComment={() => {
+                    setItemCommentDraft('');
+                    setCommentModalOpen(true);
+                  }}
+                  onEditTags={() => {
+                    setEditableTags(previewItem.tags);
+                    setNewTagDraft('');
+                    setTagEditorOpen(true);
+                  }}
+                  onRenameCase={() => {
+                    setRenameDraft(previewItem.title);
+                    setRenameModalOpen(true);
+                  }}
                   onReopenItem={() => openReopenModal('Investigating')}
                   onViewActivityLog={() => setActiveTab('Activity Log')}
                   onClassifyItem={() => openClassifyModal(previewItem)}
                   onReviewRelatedAlerts={() =>
                     openInvestigationWorkspace(previewItem.id, 'evidence')
                   }
-                  onConsolidateHint={() =>
-                    notifyPlaceholderAction('Consolidate into case', 'Select related queue items to consolidate them into a case.')
-                  }
+                  onConsolidateHint={() => {
+                    const related = items
+                      .filter((entry) => entry.id !== previewItem.id && entry.item_type === 'alert' && entry.risk_type === previewItem.risk_type)
+                      .slice(0, 2)
+                      .map((entry) => entry.id);
+                    setSelectedIds([previewItem.id, ...related]);
+                    setMergeOpen(true);
+                  }}
                 />
               </div>
             ) : null}
@@ -1235,6 +1291,86 @@ function App() {
         </div>
       </Modal>
 
+      <InvestigationNoteModal
+        open={commentModalOpen}
+        value={itemCommentDraft}
+        title="Add comment"
+        primaryButtonText="Save comment"
+        labelText="Comment"
+        onChange={setItemCommentDraft}
+        onClose={() => setCommentModalOpen(false)}
+        onSubmit={() => {
+          if (!classificationTargetItem || !itemCommentDraft.trim()) return;
+          appendItemComment(classificationTargetItem.id, itemCommentDraft.trim());
+          setCommentModalOpen(false);
+          addToast('success', 'Comment saved', `Added a comment to ${classificationTargetItem.id}.`);
+        }}
+      />
+
+      <Modal
+        open={tagEditorOpen}
+        modalHeading="Edit tags"
+        primaryButtonText="Save tags"
+        secondaryButtonText="Cancel"
+        onRequestClose={() => setTagEditorOpen(false)}
+        onRequestSubmit={() => {
+          if (!classificationTargetItem) return;
+          const normalized = [...new Set([...editableTags, ...(newTagDraft.trim() ? [newTagDraft.trim()] : [])])];
+          updateTags(classificationTargetItem.id, normalized);
+          setTagEditorOpen(false);
+          addToast('success', 'Tags updated', `${classificationTargetItem.id} tags updated.`);
+        }}
+      >
+        <div className="cg-dialog-stack">
+          <div className="cg-checkbox-grid">
+            {['Needs review', 'Data exfiltration', 'Public exposure', 'AI usage', 'False-positive candidate'].map((tag) => (
+              <label key={tag} className="cg-tag-editor-row">
+                <input
+                  type="checkbox"
+                  checked={editableTags.includes(tag)}
+                  onChange={() =>
+                    setEditableTags((current) =>
+                      current.includes(tag) ? current.filter((entry) => entry !== tag) : [...current, tag],
+                    )
+                  }
+                />
+                <span>{tag}</span>
+              </label>
+            ))}
+          </div>
+          <TextArea
+            id="new-tag-draft"
+            labelText="Add tag"
+            rows={2}
+            value={newTagDraft}
+            onChange={(event) => setNewTagDraft(event.currentTarget.value)}
+          />
+        </div>
+      </Modal>
+
+      <Modal
+        open={renameModalOpen}
+        modalHeading="Rename case"
+        primaryButtonText="Save title"
+        secondaryButtonText="Cancel"
+        primaryButtonDisabled={!renameDraft.trim()}
+        onRequestClose={() => setRenameModalOpen(false)}
+        onRequestSubmit={() => {
+          if (!classificationTargetItem || !renameDraft.trim()) return;
+          renameItem(classificationTargetItem.id, renameDraft.trim());
+          setRenameModalOpen(false);
+          addToast('success', 'Case renamed', `${classificationTargetItem.id} renamed.`);
+        }}
+      >
+        <TextArea
+          id="rename-case-draft"
+          labelText="Case title"
+          rows={3}
+          value={renameDraft}
+          onChange={(event) => setRenameDraft(event.currentTarget.value)}
+        />
+      </Modal>
+
       <ClassifyItemModal
         open={classifyModalOpen}
         itemId={classificationTargetItem?.id ?? null}
@@ -1349,6 +1485,20 @@ function App() {
           onOpenEscalate={openEscalateModal}
           onToast={addToast}
           onWorkspaceChange={(updater, options) => updateWorkspaceState(investigationItem, updater, options)}
+          onSyncTimelineAttachment={(eventId) => syncTimelineAttachment(investigationItem.id, eventId)}
+          onSyncEvidenceAttachment={(evidenceId) => syncEvidenceAttachment(investigationItem.id, evidenceId)}
+          onDetachAlertFromCase={(alertId) => detachAlertFromCase(investigationItem.id, alertId)}
+          onMoveAlertToCase={(alertId, destinationCaseId, reason) =>
+            moveAlertBetweenCases(alertId, investigationItem.id, destinationCaseId, reason)
+          }
+          availableCases={items
+            .filter((entry) => entry.item_type === 'case')
+            .map((entry) => ({
+              id: entry.id,
+              title: entry.title,
+              status: entry.status,
+              alertCount: entry.alert_count ?? entry.preview.alerts?.length ?? 0,
+            }))}
         />
       ) : null}
 
@@ -1801,6 +1951,31 @@ function rollupMergedStatus(
     const leastRank = ranks.get(leastProgressed) ?? 99;
     return currentRank < leastRank ? status : leastProgressed;
   }, openStatuses[0]);
+}
+
+function matchesQueuePreset(
+  item: WorkItem,
+  preset: QueuePreset | null,
+  workflowStateByItemId: Record<string, { workspace?: { actions: Array<{ currentState: string }> } }>,
+) {
+  if (!preset) return true;
+  const actions = workflowStateByItemId[item.id]?.workspace?.actions ?? [];
+  if (preset === 'critical-open') return item.severity === 'Critical' && item.status !== 'Resolved';
+  if (preset === 'sla-breached') return parseSla(item.sla) <= 0;
+  if (preset === 'unassigned-p1') return item.assignee === 'Unassigned' && /^P1/.test(item.priority);
+  if (preset === 'active-exposures') return /active exposure|not contained/i.test(item.containment);
+  if (preset === 'pending-approvals') return actions.some((action) => action.currentState === 'Pending approval');
+  if (preset === 'failed-actions') return actions.some((action) => action.currentState === 'Failed');
+  return true;
+}
+
+function formatQueuePreset(preset: QueuePreset) {
+  if (preset === 'critical-open') return 'Critical open';
+  if (preset === 'sla-breached') return 'SLA breached';
+  if (preset === 'unassigned-p1') return 'Unassigned P1';
+  if (preset === 'active-exposures') return 'Active exposures';
+  if (preset === 'pending-approvals') return 'Pending approvals';
+  return 'Failed actions';
 }
 
 export default App;

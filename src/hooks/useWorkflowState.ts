@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { buildInvestigationContext, createWorkspaceStateFromFixture } from '../data/investigationFixtures';
 import type {
+  ClassificationRecord,
   EscalationRecord,
+  IncludedAlertItem,
   InvestigationActivityItem,
   InvestigationWorkspaceState,
   ResolutionRecord,
@@ -72,6 +74,48 @@ export function useWorkflowState(baseItems: WorkItem[], currentAnalyst: string) 
       ]);
     },
     [],
+  );
+
+  const appendItemComment = useCallback(
+    (itemId: string, text: string, actor = currentAnalyst) => {
+      const item = getItemById(itemId);
+      if (!item) return;
+      updateItem(itemId, (entry) => ({
+        ...entry,
+        localHistory: [...(entry.localHistory ?? []), `Comment added: ${text}`],
+      }));
+      setWorkflowStateByItemId((current) => {
+        const workspace = current[itemId]?.workspace;
+        if (!workspace) return current;
+        return {
+          ...current,
+          [itemId]: {
+            ...current[itemId],
+            workspace: {
+              ...workspace,
+              notes: [
+                { id: `note-${Date.now()}`, author: actor, timestamp: 'Just now', text },
+                ...workspace.notes,
+              ],
+              activity: [
+                makeActivityEntry(actor, 'Analyst', 'Comment added', text),
+                ...workspace.activity,
+              ],
+            },
+          },
+        };
+      });
+      appendGlobalActivity(item, {
+        id: `activity-${Date.now()}-${itemId}`,
+        timestamp: 'Just now',
+        actor,
+        actorType: 'Analyst',
+        activityType: 'Comment added',
+        description: text,
+        result: 'Recorded',
+      });
+    },
+    [appendGlobalActivity, currentAnalyst, getItemById, updateItem],
   );
 
   const syncItemFromWorkspace = useCallback(
@@ -258,13 +302,14 @@ export function useWorkflowState(baseItems: WorkItem[], currentAnalyst: string) 
   );
 
   const classifyItem = useCallback(
-    (itemId: string, classification: WorkItemClassification, comment: string) => {
+    (itemId: string, record: ClassificationRecord) => {
       const item = getItemById(itemId);
       if (!item) return;
       updateItem(itemId, (entry) => ({
         ...entry,
-        classification,
-        localHistory: [...(entry.localHistory ?? []), `Classified as ${classification}: ${comment}`],
+        classification: record.classification,
+        classificationRecord: record,
+        localHistory: [...(entry.localHistory ?? []), `Classified as ${record.classification}: ${record.comment}`],
       }));
       setWorkflowStateByItemId((current) => ({
         ...current,
@@ -272,19 +317,20 @@ export function useWorkflowState(baseItems: WorkItem[], currentAnalyst: string) 
           ...current[itemId],
           workspace: {
             ...getOrCreateWorkspace(item),
-            classification,
+            classification: record.classification,
+            classificationRecord: record,
           },
         },
       }));
       appendGlobalActivity(item, {
         id: `activity-${Date.now()}-${itemId}`,
-        timestamp: 'Just now',
-        actor: currentAnalyst,
+        timestamp: record.updatedAt,
+        actor: record.updatedBy,
         actorType: 'Analyst',
         activityType: 'Classification set',
-        description: `${itemId} classified as ${classification}.`,
-        newValue: classification,
-        comment,
+        description: `${itemId} classified as ${record.classification}.`,
+        newValue: record.classification,
+        comment: record.comment,
         result: 'Updated',
       });
     },
@@ -296,11 +342,22 @@ export function useWorkflowState(baseItems: WorkItem[], currentAnalyst: string) 
       const item = getItemById(itemId);
       if (!item) return;
       const workspace = getOrCreateWorkspace(item);
+      const detachedAlertIds = new Set(
+        resolution.childAlertHandling === 'detach-selected' ? resolution.detachedAlertIds ?? [] : [],
+      );
+      const remainingAlerts =
+        item.item_type === 'case'
+          ? workspace.alerts.filter((alert) => !detachedAlertIds.has(alert.id))
+          : workspace.alerts;
       const nextWorkspace: InvestigationWorkspaceState = {
         ...workspace,
         classification: resolution.classification,
         lastResolution: workspace.resolution,
         resolution,
+        alerts:
+          item.item_type === 'case'
+            ? remainingAlerts.map((alert) => ({ ...alert, status: 'Resolved' }))
+            : workspace.alerts,
       };
       updateWorkspaceState(item, () => nextWorkspace);
       setWorkflowStateByItemId((current) => ({
@@ -317,15 +374,103 @@ export function useWorkflowState(baseItems: WorkItem[], currentAnalyst: string) 
         classification: resolution.classification,
         resolution,
         lastResolution: entry.resolution,
-        preview: {
-          ...entry.preview,
-          identity_and_urgency: {
-            ...entry.preview.identity_and_urgency,
-            status: 'Resolved',
-          },
-        },
-        localHistory: [...(entry.localHistory ?? []), `Resolved: ${resolution.resolutionSummary}`],
+        child_alert_ids: item.item_type === 'case' ? remainingAlerts.map((alert) => alert.id) : entry.child_alert_ids,
+        alert_count: item.item_type === 'case' ? remainingAlerts.length : entry.alert_count,
+        derivedComposition:
+          item.item_type === 'case'
+            ? remainingAlerts.length === 1
+              ? 'Single-alert case'
+              : remainingAlerts.length > 5
+                ? 'Large case: 6+ alerts'
+                : 'Multi-alert case: 2–5 alerts'
+            : entry.derivedComposition,
+        preview:
+          item.item_type === 'case'
+            ? {
+                ...entry.preview,
+                identity_and_urgency: {
+                  ...entry.preview.identity_and_urgency,
+                  status: 'Resolved',
+                },
+                alerts: remainingAlerts.map((alert) => ({
+                  id: alert.id,
+                  title: alert.title,
+                  severity: alert.severity,
+                  priority: alert.priority,
+                })),
+              }
+            : {
+                ...entry.preview,
+                identity_and_urgency: {
+                  ...entry.preview.identity_and_urgency,
+                  status: 'Resolved',
+                },
+              },
+        localHistory: [...(entry.localHistory ?? []), `${resolution.resolvedWithException ? 'Resolved with exception' : 'Resolved'}: ${resolution.resolutionSummary}`],
       }));
+      if (item.item_type === 'case') {
+        workspace.alerts.forEach((alert) => {
+          if (detachedAlertIds.has(alert.id)) {
+            updateItem(alert.id, (entry) => ({
+              ...entry,
+              item_type: 'alert',
+              alert_count: null,
+              child_alert_ids: undefined,
+              derivedComposition: 'Standalone alert',
+              status: entry.status === 'Resolved' ? 'Investigating' : entry.status,
+              resolution: undefined,
+              lastResolution: entry.resolution ?? entry.lastResolution,
+              preview: {
+                ...entry.preview,
+                identity_and_urgency: {
+                  ...entry.preview.identity_and_urgency,
+                  type: 'Alert',
+                  status: entry.status === 'Resolved' ? 'Investigating' : entry.status,
+                },
+                correlation_status: `Detached from ${itemId} during resolution and kept open.`,
+              },
+              localHistory: [...(entry.localHistory ?? []), `Detached from ${itemId} during resolution`],
+            }));
+            appendGlobalActivity(item, {
+              id: `activity-${Date.now()}-${alert.id}`,
+              timestamp: resolution.resolvedAt,
+              actor: resolution.resolvedBy,
+              actorType: 'Analyst',
+              activityType: 'Alert detached',
+              description: `${alert.id} detached from ${itemId} during resolution.`,
+              result: 'Detached',
+            });
+            return;
+          }
+
+          updateItem(alert.id, (entry) => ({
+            ...entry,
+            status: 'Resolved',
+            classification: resolution.classification,
+            resolution,
+            lastResolution: entry.resolution,
+            preview: {
+              ...entry.preview,
+              identity_and_urgency: {
+                ...entry.preview.identity_and_urgency,
+                status: 'Resolved',
+              },
+            },
+            localHistory: [...(entry.localHistory ?? []), `Resolved with parent case ${itemId}`],
+          }));
+          appendGlobalActivity(item, {
+            id: `activity-${Date.now()}-${alert.id}`,
+            timestamp: resolution.resolvedAt,
+            actor: resolution.resolvedBy,
+            actorType: 'Analyst',
+            activityType: 'Child alert resolved',
+            description: `${alert.id} resolved with parent case ${itemId}.`,
+            newValue: resolution.classification,
+            comment,
+            result: 'Resolved',
+          });
+        });
+      }
       appendGlobalActivity(item, {
         id: `activity-${Date.now()}-${itemId}`,
         timestamp: resolution.resolvedAt,
@@ -345,15 +490,40 @@ export function useWorkflowState(baseItems: WorkItem[], currentAnalyst: string) 
     (itemId: string, status: WorkItem['status'], comment: string) => {
       const item = getItemById(itemId);
       if (!item) return;
+      const previousResolution = item.resolution ?? workflowStateByItemId[itemId]?.workspace?.resolution;
       changeWorkflowStatus(itemId, status, comment);
       updateItem(itemId, (entry) => ({
         ...entry,
         reopenedCount: (entry.reopenedCount ?? 0) + 1,
-        lastResolution: entry.resolution ?? entry.lastResolution,
+        lastResolution: previousResolution ?? entry.lastResolution,
         resolution: undefined,
+        localHistory: [...(entry.localHistory ?? []), `Reopened: ${comment}`],
       }));
+      setWorkflowStateByItemId((current) => {
+        const workspace = current[itemId]?.workspace;
+        if (!workspace) return current;
+        return {
+          ...current,
+          [itemId]: {
+            ...current[itemId],
+            workspace: {
+              ...workspace,
+              lastResolution: workspace.resolution ?? workspace.lastResolution,
+              resolution: undefined,
+              activity: [
+                makeActivityEntry(currentAnalyst, 'Analyst', 'Case reopened', `${itemId} reopened as ${status}.`, {
+                  comment,
+                  previousValue: previousResolution?.resolutionSummary,
+                  newValue: status,
+                }),
+                ...workspace.activity,
+              ],
+            },
+          },
+        };
+      });
     },
-    [changeWorkflowStatus, getItemById, updateItem],
+    [changeWorkflowStatus, currentAnalyst, getItemById, updateItem, workflowStateByItemId],
   );
 
   const addEscalation = useCallback(
@@ -373,9 +543,179 @@ export function useWorkflowState(baseItems: WorkItem[], currentAnalyst: string) 
         description: `${itemId} escalated to ${escalation.team}.`,
         comment: escalation.note,
         result: escalation.urgency,
+        newValue: escalation.notifyDataOwner ? 'Data-owner notification requested' : escalation.team,
       });
     },
     [appendGlobalActivity, getItemById, updateWorkspaceState],
+  );
+
+  const updateTags = useCallback(
+    (itemId: string, tags: string[], actor = currentAnalyst) => {
+      const item = getItemById(itemId);
+      if (!item) return;
+      updateItem(itemId, (entry) => ({ ...entry, tags, localHistory: [...(entry.localHistory ?? []), `Tags updated: ${tags.join(', ') || 'None'}`] }));
+      appendGlobalActivity(item, {
+        id: `activity-${Date.now()}-${itemId}`,
+        timestamp: 'Just now',
+        actor,
+        actorType: 'Analyst',
+        activityType: 'Tags updated',
+        description: `${itemId} tags updated.`,
+        previousValue: item.tags.join(', '),
+        newValue: tags.join(', '),
+        result: 'Updated',
+      });
+    },
+    [appendGlobalActivity, currentAnalyst, getItemById, updateItem],
+  );
+
+  const renameItem = useCallback(
+    (itemId: string, title: string, actor = currentAnalyst) => {
+      const item = getItemById(itemId);
+      if (!item) return;
+      updateItem(itemId, (entry) => ({
+        ...entry,
+        title,
+        preview: {
+          ...entry.preview,
+          identity_and_urgency: { ...entry.preview.identity_and_urgency, title },
+        },
+        localHistory: [...(entry.localHistory ?? []), `Renamed to ${title}`],
+      }));
+      appendGlobalActivity(item, {
+        id: `activity-${Date.now()}-${itemId}`,
+        timestamp: 'Just now',
+        actor,
+        actorType: 'Analyst',
+        activityType: 'Case renamed',
+        description: `${itemId} renamed.`,
+        previousValue: item.title,
+        newValue: title,
+        result: 'Updated',
+      });
+    },
+    [appendGlobalActivity, currentAnalyst, getItemById, updateItem],
+  );
+
+  const syncTimelineAttachment = useCallback(
+    (itemId: string, eventId: string, actor = currentAnalyst) => {
+      const item = getItemById(itemId);
+      if (!item) return;
+      const workspace = getOrCreateWorkspace(item);
+      const event = workspace.timeline.find((entry) => entry.id === eventId);
+      if (!event) return;
+      const nextAttached = event.attached === false;
+      updateWorkspaceState(item, (current) => ({
+        ...current,
+        timeline: current.timeline.map((entry) => entry.id === eventId ? { ...entry, attached: nextAttached } : entry),
+        evidence: current.evidence.map((entry) => entry.id === event.evidenceId ? { ...entry, attached: nextAttached } : entry),
+        activity: [
+          makeActivityEntry(actor, 'Analyst', `Timeline event ${nextAttached ? 'attached' : 'detached'}`, `${event.title}`, {
+            newValue: nextAttached ? 'Attached' : 'Detached',
+          }),
+          ...current.activity,
+        ],
+      }));
+      appendGlobalActivity(item, {
+        id: `activity-${Date.now()}-${itemId}`,
+        timestamp: 'Just now',
+        actor,
+        actorType: 'Analyst',
+        activityType: `Timeline event ${nextAttached ? 'attached' : 'detached'}`,
+        description: `${event.title}`,
+        result: nextAttached ? 'Attached' : 'Detached',
+      });
+    },
+    [appendGlobalActivity, currentAnalyst, getItemById, getOrCreateWorkspace, updateWorkspaceState],
+  );
+
+  const syncEvidenceAttachment = useCallback(
+    (itemId: string, evidenceId: string, actor = currentAnalyst) => {
+      const item = getItemById(itemId);
+      if (!item) return;
+      const workspace = getOrCreateWorkspace(item);
+      const evidence = workspace.evidence.find((entry) => entry.id === evidenceId);
+      if (!evidence) return;
+      const nextAttached = !evidence.attached;
+      updateWorkspaceState(item, (current) => ({
+        ...current,
+        evidence: current.evidence.map((entry) => entry.id === evidenceId ? { ...entry, attached: nextAttached } : entry),
+        timeline: current.timeline.map((entry) => entry.evidenceId === evidenceId ? { ...entry, attached: nextAttached } : entry),
+        activity: [
+          makeActivityEntry(actor, 'Analyst', `Evidence ${nextAttached ? 'attached' : 'detached'}`, evidence.id, {
+            newValue: nextAttached ? 'Attached' : 'Detached',
+          }),
+          ...current.activity,
+        ],
+      }));
+      appendGlobalActivity(item, {
+        id: `activity-${Date.now()}-${itemId}`,
+        timestamp: 'Just now',
+        actor,
+        actorType: 'Analyst',
+        activityType: `Evidence ${nextAttached ? 'attached' : 'detached'}`,
+        description: evidence.id,
+        result: nextAttached ? 'Attached' : 'Detached',
+      });
+    },
+    [appendGlobalActivity, currentAnalyst, getItemById, getOrCreateWorkspace, updateWorkspaceState],
+  );
+
+  const detachAlertFromCase = useCallback(
+    (sourceCaseId: string, alertId: string, actor = currentAnalyst) => {
+      const caseItem = getItemById(sourceCaseId);
+      if (!caseItem) return null;
+      const workspace = getOrCreateWorkspace(caseItem);
+      const alert = workspace.alerts.find((entry) => entry.id === alertId);
+      if (!alert) return null;
+      const standaloneAlert = restoreStandaloneAlert(caseItem, workspace, alert);
+      updateWorkspaceState(caseItem, (current) => ({
+        ...current,
+        alerts: current.alerts.filter((entry) => entry.id !== alertId),
+        selectedAlertId: current.selectedAlertId === alertId ? null : current.selectedAlertId,
+        activity: [
+          makeActivityEntry(actor, 'Analyst', 'Alert detached', `${alertId} detached from ${sourceCaseId}.`),
+          ...current.activity,
+        ],
+      }));
+      setItems((current) => {
+        const next = current.map((entry) => entry.id === sourceCaseId ? syncCaseComposition(entry, workspace.alerts.filter((child) => child.id !== alertId), actor) : entry);
+        return [standaloneAlert, ...next.filter((entry) => entry.id !== standaloneAlert.id)];
+      });
+      appendGlobalActivity(caseItem, {
+        id: `activity-${Date.now()}-${sourceCaseId}`,
+        timestamp: 'Just now',
+        actor,
+        actorType: 'Analyst',
+        activityType: 'Alert detached',
+        description: `${alertId} detached from ${sourceCaseId}.`,
+        result: 'Detached',
+      });
+      return standaloneAlert;
+    },
+    [appendGlobalActivity, currentAnalyst, getItemById, getOrCreateWorkspace, updateWorkspaceState],
+  );
+
+  const moveAlertBetweenCases = useCallback(
+    (alertId: string, sourceCaseId: string, destinationCaseId: string, reason: string, actor = currentAnalyst) => {
+      const detached = detachAlertFromCase(sourceCaseId, alertId, actor);
+      const destination = getItemById(destinationCaseId);
+      if (!detached || !destination) return;
+      const destinationWorkspace = getOrCreateWorkspace(destination);
+      const alertEntry = buildAlertEntryFromItem(detached, destinationCaseId);
+      updateWorkspaceState(destination, (current) => ({
+        ...current,
+        alerts: [alertEntry, ...current.alerts],
+        activity: [
+          makeActivityEntry(actor, 'Analyst', 'Alert moved to case', `${alertId} moved into ${destinationCaseId}.`, { comment: reason }),
+          ...current.activity,
+        ],
+      }));
+      setItems((current) => current
+        .filter((entry) => entry.id !== alertId)
+        .map((entry) => entry.id === destinationCaseId ? syncCaseComposition(entry, [alertEntry, ...destinationWorkspace.alerts], actor) : entry));
+    },
+    [currentAnalyst, detachAlertFromCase, getItemById, getOrCreateWorkspace, updateWorkspaceState],
   );
 
   const overviewMetrics = useMemo(() => deriveOverviewMetrics(items, workflowStateByItemId), [items, workflowStateByItemId]);
@@ -394,10 +734,17 @@ export function useWorkflowState(baseItems: WorkItem[], currentAnalyst: string) 
     assignItem,
     changeWorkflowStatus,
     overrideSeverity,
+    appendItemComment,
+    updateTags,
+    renameItem,
     classifyItem,
     resolveItem,
     reopenItem,
     addEscalation,
+    syncTimelineAttachment,
+    syncEvidenceAttachment,
+    detachAlertFromCase,
+    moveAlertBetweenCases,
     overviewMetrics,
   };
 }
@@ -492,4 +839,99 @@ export function compareTimeRange(event: TimelineEvent, range: string) {
   if (range === 'Latest 30 minutes') return diffMinutes <= 30;
   if (range === 'Latest hour') return diffMinutes <= 60;
   return true;
+}
+
+function restoreStandaloneAlert(
+  caseItem: WorkItem,
+  workspace: InvestigationWorkspaceState,
+  alert: IncludedAlertItem,
+): WorkItem {
+  const linkedEvidence = workspace.evidence.filter((entry) => alert.linkedEvidenceIds?.includes(entry.id));
+  const primaryEvidence = linkedEvidence[0];
+  const relatedEntities = workspace.entities.filter((entry) => alert.relatedEntityIds?.includes(entry.id));
+  return {
+    id: alert.id,
+    item_type: 'alert',
+    title: alert.title,
+    risk_type: caseItem.risk_type,
+    affected_systems: [alert.system],
+    key_resource: relatedEntities[0]?.displayName ?? caseItem.key_resource,
+    primary_actor: relatedEntities[0]?.displayName ?? caseItem.primary_actor,
+    actor_entity_type: relatedEntities[0]?.type ?? caseItem.actor_entity_type,
+    priority: alert.priority,
+    priority_score: Number(alert.priority.match(/(\d+)$/)?.[1] ?? caseItem.priority_score),
+    severity: alert.severity,
+    data_sensitivity: caseItem.data_sensitivity,
+    status: alert.status === 'Resolved' ? 'Investigating' : alert.status,
+    assignee: caseItem.assignee,
+    sla: caseItem.sla,
+    detection_time: alert.detectedAt ?? caseItem.detection_time,
+    last_activity: 'Just now',
+    containment: caseItem.containment,
+    detection_source: alert.detectionSource,
+    resource_criticality: caseItem.resource_criticality,
+    destination_exposure_target: caseItem.destination_exposure_target,
+    alert_count: null,
+    child_alert_ids: undefined,
+    tags: [...caseItem.tags],
+    affected_data_volume: caseItem.affected_data_volume,
+    preview: {
+      ...caseItem.preview,
+      identity_and_urgency: {
+        ...caseItem.preview.identity_and_urgency,
+        type: 'Alert',
+        id: alert.id,
+        title: alert.title,
+        severity: alert.severity,
+        priority: alert.priority,
+        status: alert.status === 'Resolved' ? 'Investigating' : alert.status,
+      },
+      correlation_status: 'Detached from parent case and restored as a standalone alert.',
+      alerts: undefined,
+    },
+    derivedComposition: 'Standalone alert',
+    localHistory: [`Detached from ${caseItem.id}`],
+  };
+}
+
+function syncCaseComposition(item: WorkItem, alerts: IncludedAlertItem[], actor: string): WorkItem {
+  const affectedSystems = [...new Set(alerts.map((entry) => entry.system))];
+  return {
+    ...item,
+    child_alert_ids: alerts.map((entry) => entry.id),
+    alert_count: alerts.length,
+    affected_systems: affectedSystems.length ? affectedSystems : item.affected_systems,
+    last_activity: 'Just now',
+    localHistory: [...(item.localHistory ?? []), `Case composition updated by ${actor}`],
+    preview: {
+      ...item.preview,
+      alerts: alerts.map((entry) => ({
+        id: entry.id,
+        title: entry.title,
+        severity: entry.severity,
+        priority: entry.priority,
+      })),
+    },
+    derivedComposition:
+      alerts.length === 1 ? 'Single-alert case' : alerts.length > 5 ? 'Large case: 6+ alerts' : 'Multi-alert case: 2–5 alerts',
+  };
+}
+
+function buildAlertEntryFromItem(item: WorkItem, parentCaseId: string): IncludedAlertItem {
+  return {
+    id: item.id,
+    title: item.title,
+    severity: item.severity,
+    priority: item.priority,
+    detectionSource: item.detection_source,
+    system: item.affected_systems[0] ?? item.detection_source,
+    linkedEventsCount: 1,
+    status: item.status,
+    linkingRationale: `Manually moved into ${parentCaseId}.`,
+    relevance: 'Needs review',
+    parentCaseId,
+    linkedEvidenceIds: [`${item.id}-ev-1`],
+    relatedEntityIds: [],
+    detectedAt: item.detection_time,
+  };
 }

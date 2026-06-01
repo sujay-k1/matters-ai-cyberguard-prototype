@@ -20,7 +20,7 @@
 - `Header`, `HeaderName`, `HeaderGlobalAction`, `HeaderGlobalBar`, `SkipToContent`
 - `Search`
 - `Button`
-- `ComposedModal`, `ModalHeader`, `ModalBody`, `ModalFooter`
+- `ComposedModal`, `ModalHeader`, `ModalBody`
 - `Dropdown`
 - `Tabs`, `TabList`, `Tab`, `TabPanels`, `TabPanel`
 - `Toggle`
@@ -38,7 +38,7 @@
 - Filter family list and nested flyout positioning
 - Sticky pinned table columns and sticky footer bulk bar
 - Right-side overlay preview drawer with triage-first sticky header/footer and accordion sections
-- Large Carbon `ComposedModal` investigation workspace with split-body layout, sticky header/footer, and inline detail panels
+- Large Carbon `ComposedModal` investigation workspace with split-body layout, sticky header, and inline detail dialogs
 - Lightweight pagination footer
 - DnD column customizer around `@dnd-kit/sortable`
 
@@ -54,6 +54,7 @@
 
 - Added a lightweight local workflow-state hook instead of introducing Redux, Zustand, MobX, or another dependency
 - Investigation workspace state is now keyed by item ID and survives modal close / reopen during the current browser session
+- Queue composition updates, alert restoration, classification, escalation metadata, and local audit events now route through the same shared workflow layer
 - Shared workflow state also drives:
   - derived containment
   - classification
@@ -74,16 +75,21 @@
 - Split case and alert rendering paths so cases show composition and alerts show correlation guidance
 - Suppressed low-value fields like repeated `Not applicable` destination values from the quick-facts layer
 - Updated merge review to show conservative merged workflow status roll-up and require a reopen comment when open work is merged into a resolved destination case
+- Preview overflow actions now complete local workflows for comments, tags, rename, classification, reopen, related-alert review, and consolidation seeding
 
 ## Investigation workspace
 
 - Replaced the placeholder investigation modal with a Carbon `ComposedModal` so the queue remains dimly visible underneath while preserving the current preview and queue context
+- Preserved the header-first investigation design and intentionally kept the investigation workspace footer removed
 - Preserved information continuity from the preview drawer by carrying identity, urgency, triage brief, scope, correlation, and AI intelligence into the Summary tab
 - Added a compositional risk-playbook model keyed by risk type to generate recommended checks, likely response actions, and false-positive explanations
 - Added config-driven system evidence modules so investigation guidance can adapt to databases, endpoints, cloud, network, SaaS, identity, and other system categories without creating separate pages
 - Added a polished hero fixture for `CASE-3001`, a contrasting cloud-exposure fixture for `CASE-3002`, and generic fallback investigation generation for any selected alert or case
 - Kept assignee, workflow status, severity override, and reopen controls wired to shared queue state so changes stay synchronized across the table, preview drawer, and investigation header
 - Implemented local-only investigation interactions for tasks, notes, hypothesis editing, timeline relevance, evidence relevance, entity panels, and response-action state changes
+- Timeline and evidence detail now share synchronized attach / detach state, and timeline raw-evidence actions hide or disable when no evidence exists
+- Alert-detail workflows now support detaching alerts back into the Work Queue, moving alerts to another case, and opening related evidence and entities
+- Entity-detail workflows now support Overview, Activity, and Baseline modes without leaving the dialog pattern
 - Deferred the real remediation workflow and all external integrations while keeping response planning visible in the Actions tab
 
 ## Response and resolution workflow
@@ -101,18 +107,26 @@
   - escalation / handoff
 - Added classification and resolution flows with local guardrails
 - Resolve-with-exception requires a mandatory comment when open warnings remain
-- Child-alert handling supports default resolution or selective detach-keep-open behavior
+- Child-alert handling supports default resolution or selective detach-keep-open behavior, with composition synchronization and standalone alert restoration
 - Previous resolution state is preserved when a resolved item is reopened
 
 ## Activity and overview
 
-- Added a module-level Activity Log that aggregates queue updates, investigation events, remediation progress, containment changes, classifications, resolutions, reopenings, and handoffs
+- Added a module-level Activity Log that aggregates queue updates, investigation events, remediation progress, containment changes, classifications, resolutions, reopenings, handoffs, evidence attachment changes, alert moves, and comments
+- Deduplicated overlapping queue / workspace / global activity entries before rendering the module log
 - Added an analyst-operational Overview surface with immediate-attention metrics, workflow load, risk-pattern rollups, and Work Queue click-through actions
+- Overview click-through now uses real queue presets rather than relying on queue-search text for approval and failed-action scenarios
 
 ## Lightweight hunting and detail depth
 
 - Added a deterministic lightweight hunt-results flow instead of a full hunt engine
 - Added raw-evidence view, alert detail, richer evidence detail, and deeper entity-detail sections without introducing new full-screen routes
+
+## Classification and escalation metadata
+
+- Classification records now preserve analyst comment, timestamp, duplicate-case context, accepted-risk owner, and false-positive tuning-feedback intent
+- Escalation records now preserve team, urgency, note, task owner, and data-owner notification intent
+- These metadata fields are shown in activity surfaces and remain available through the current browser session
 
 ## Known limitations
 
@@ -123,8 +137,9 @@
 - The investigation workspace uses static hero fixtures plus deterministic fallback generation rather than real cross-system evidence retrieval
 - Nested investigation note and task workflows are local-only and reset on refresh
 - Activity Log and Overview are local aggregations rather than backend-backed operational telemetry
-- Child-alert detach and move-to-case flows remain intentionally lightweight and deterministic
+- Child-alert detach, move-to-case, and composition recalculation flows remain intentionally lightweight and deterministic
 - Remediation execution, approvals, escalations, and source-system links are simulated
+- Investigation footer remains intentionally removed; header actions are the primary control surface
 
 ## Suggested next steps
 

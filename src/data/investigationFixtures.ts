@@ -132,10 +132,15 @@ export function createWorkspaceStateFromFixture(fixture: InvestigationFixture) {
       relatedAssets: [...entity.relatedAssets],
       suggestedChecks: [...entity.suggestedChecks],
       responseCandidates: [...entity.responseCandidates],
+      recentActivity: entity.recentActivity?.map((entry) => ({ ...entry })),
+      baselineSignals: entity.baselineSignals?.map((entry) => ({ ...entry })),
+      relatedAlertIds: [...(entity.relatedAlertIds ?? [])],
+      relatedCaseIds: [...(entity.relatedCaseIds ?? [])],
     })),
     actions: fixture.actions.map((action) => ({ ...action })),
     activity: fixture.activity.map((entry) => ({ ...entry })),
     classification: undefined,
+    classificationRecord: undefined,
     resolution: undefined,
     lastResolution: undefined,
     escalations: [],
@@ -184,26 +189,38 @@ function case3001Fixture(item: WorkItem): InvestigationFixture {
       'Are additional users, devices, or sessions involved?',
     ],
     timelineEvents: [
-      timeline('tl-1', '10:04 PM', 'Identity', 'Microsoft Entra ID', 'Unusual sign-in from unfamiliar location', 'Rohan Mehta authenticated from an unusual location shortly before the export sequence.', 'ALERT-1043', 'Rohan Mehta', 'Needs review', ['Source IP differs from baseline', 'Session continued into Snowflake and browser activity']),
-      timeline('tl-2', '10:09 PM', 'Snowflake', 'Snowflake', '85,000 customer billing rows exported', 'A high-volume query exported billing records into a CSV-shaped result set.', 'ALERT-1043', 'Snowflake customer billing database', 'Relevant', ['Rows exported: 85,000', 'Role used: analyst_read_export', 'Client IP mapped to VPN egress']),
-      timeline('tl-3', '10:13 PM', 'Endpoint', 'Managed MacBook DEV-4032', 'CSV written to local downloads folder', 'Endpoint telemetry shows a new file written and renamed twice before browser interaction.', 'ALERT-1033', 'DEV-4032', 'Relevant', ['File path: /Users/rohan/Downloads/customer_billing_export.csv', 'Browser process touched the file']),
-      timeline('tl-4', '10:16 PM', 'Network', 'Secure web gateway', '1.4 GB outbound transfer to personal cloud-storage domain', 'Proxy and DNS logs show a large upload to a personal cloud-storage destination.', 'ALERT-1083', 'drive-upload.personal-cloud.example', 'Relevant', ['Bytes transferred: 1.4 GB', 'TLS session matched browser upload process']),
-      timeline('tl-5', '10:19 PM', 'SaaS', 'Google Drive', 'File available in personal cloud account', 'Destination metadata indicates a new file object created in a personal Google Drive context.', 'ALERT-1083', 'Personal Google Drive', 'Needs review', ['Sharing status currently unknown', 'Download history not yet confirmed']),
+      timeline('tl-1', '10:04 PM', 'Identity', 'Microsoft Entra ID', 'Unusual sign-in from unfamiliar location', 'Rohan Mehta authenticated from an unusual location shortly before the export sequence.', 'ALERT-1043', 'Rohan Mehta', 'Needs review', ['Source IP differs from baseline', 'Session continued into Snowflake and browser activity'], undefined, 'EV-3001-1'),
+      timeline('tl-2', '10:09 PM', 'Snowflake', 'Snowflake', '85,000 customer billing rows exported', 'A high-volume query exported billing records into a CSV-shaped result set.', 'ALERT-1043', 'Snowflake customer billing database', 'Relevant', ['Rows exported: 85,000', 'Role used: analyst_read_export', 'Client IP mapped to VPN egress'], undefined, 'EV-3001-1'),
+      timeline('tl-3', '10:13 PM', 'Endpoint', 'Managed MacBook DEV-4032', 'CSV written to local downloads folder', 'Endpoint telemetry shows a new file written and renamed twice before browser interaction.', 'ALERT-1033', 'DEV-4032', 'Relevant', ['File path: /Users/rohan/Downloads/customer_billing_export.csv', 'Browser process touched the file'], undefined, 'EV-3001-2'),
+      timeline('tl-4', '10:16 PM', 'Network', 'Secure web gateway', '1.4 GB outbound transfer to personal cloud-storage domain', 'Proxy and DNS logs show a large upload to a personal cloud-storage destination.', 'ALERT-1083', 'drive-upload.personal-cloud.example', 'Relevant', ['Bytes transferred: 1.4 GB', 'TLS session matched browser upload process'], undefined, 'EV-3001-3'),
+      timeline('tl-5', '10:19 PM', 'SaaS', 'Google Drive', 'File available in personal cloud account', 'Destination metadata indicates a new file object created in a personal Google Drive context.', 'ALERT-1083', 'Personal Google Drive', 'Needs review', ['Sharing status currently unknown', 'Download history not yet confirmed'], undefined, 'EV-3001-4'),
       timeline('tl-6', '10:23 PM', 'Analyst action', 'CyberGuard', 'Case assigned to Priya Sharma', 'The case was assigned for immediate investigation and containment validation.', 'CASE-3001', 'Priya Sharma', 'Relevant', ['Assignment initiated from the Work Queue']),
     ],
     alerts: [
-      alert('ALERT-1043', 'Abnormal data movement detected from Snowflake', 'Critical', 'P1 · 95', 'Database activity monitoring', 'Snowflake', 3, 'New', 'High-volume export into a user-controlled workflow', 'Relevant'),
-      alert('ALERT-1033', 'Abnormal data movement detected from Browser', 'Critical', 'P1 · 95', 'Endpoint DLP / EDR', 'Browser', 2, 'Triaged', 'Browser and local file telemetry match the Snowflake export sequence', 'Relevant'),
-      alert('ALERT-1083', 'Abnormal data movement detected from VPN', 'Critical', 'P1 · 95', 'Network DLP / proxy', 'VPN', 4, 'Investigating', 'Large outbound transfer followed the endpoint staging activity', 'Relevant'),
+      alert('ALERT-1043', 'Abnormal data movement detected from Snowflake', 'Critical', 'P1 · 95', 'Database activity monitoring', 'Snowflake', 3, 'New', 'High-volume export into a user-controlled workflow', 'Relevant', { parentCaseId: 'CASE-3001', linkedEvidenceIds: ['EV-3001-1'], relatedEntityIds: ['ent-3001-1', 'ent-3001-2'], detectedAt: '10:09 PM' }),
+      alert('ALERT-1033', 'Abnormal data movement detected from Browser', 'Critical', 'P1 · 95', 'Endpoint DLP / EDR', 'Browser', 2, 'Triaged', 'Browser and local file telemetry match the Snowflake export sequence', 'Relevant', { parentCaseId: 'CASE-3001', linkedEvidenceIds: ['EV-3001-2'], relatedEntityIds: ['ent-3001-1', 'ent-3001-3', 'ent-3001-6'], detectedAt: '10:13 PM' }),
+      alert('ALERT-1083', 'Abnormal data movement detected from VPN', 'Critical', 'P1 · 95', 'Network DLP / proxy', 'VPN', 4, 'Investigating', 'Large outbound transfer followed the endpoint staging activity', 'Relevant', { parentCaseId: 'CASE-3001', linkedEvidenceIds: ['EV-3001-3', 'EV-3001-4'], relatedEntityIds: ['ent-3001-4', 'ent-3001-5', 'ent-3001-6'], detectedAt: '10:16 PM' }),
     ],
     evidence: [
-      evidence('EV-3001-1', 'Snowflake export query', '10:09 PM', 'Snowflake', 'Rohan Mehta', 'High-volume export query for customer billing data', true, 'Relevant', true, ['Query family deviates from the user baseline', 'Rows exported: 85,000', 'Client IP linked to VPN session']),
-      evidence('EV-3001-2', 'Endpoint file artifact', '10:13 PM', 'EDR', 'DEV-4032', 'CSV file created in downloads folder and opened by browser process', true, 'Relevant', true, ['File hash captured', 'Browser process PID correlated']),
-      evidence('EV-3001-3', 'Proxy egress record', '10:16 PM', 'Secure web gateway', 'drive-upload.personal-cloud.example', 'Large outbound transfer to unmanaged cloud-storage domain', true, 'Relevant', true, ['1.4 GB transfer', 'Destination previously unseen for the user']),
-      evidence('EV-3001-4', 'Destination metadata', '10:19 PM', 'Google Drive', 'Personal Google Drive', 'Uploaded file object created in personal destination account', false, 'Needs review', true, ['Sharing state not yet retrieved', 'Download history pending']),
+      evidence('EV-3001-1', 'Snowflake export query', '10:09 PM', 'Snowflake', 'Rohan Mehta', 'High-volume export query for customer billing data', true, 'Relevant', true, ['Query family deviates from the user baseline', 'Rows exported: 85,000', 'Client IP linked to VPN session'], { timelineEventId: 'tl-2', relatedAlertId: 'ALERT-1043', sourceContext: 'Snowflake query history' }),
+      evidence('EV-3001-2', 'Endpoint file artifact', '10:13 PM', 'EDR', 'DEV-4032', 'CSV file created in downloads folder and opened by browser process', true, 'Relevant', true, ['File hash captured', 'Browser process PID correlated'], { timelineEventId: 'tl-3', relatedAlertId: 'ALERT-1033', sourceContext: 'EDR file artifact' }),
+      evidence('EV-3001-3', 'Proxy egress record', '10:16 PM', 'Secure web gateway', 'drive-upload.personal-cloud.example', 'Large outbound transfer to unmanaged cloud-storage domain', true, 'Relevant', true, ['1.4 GB transfer', 'Destination previously unseen for the user'], { timelineEventId: 'tl-4', relatedAlertId: 'ALERT-1083', sourceContext: 'Proxy / egress logs' }),
+      evidence('EV-3001-4', 'Destination metadata', '10:19 PM', 'Google Drive', 'Personal Google Drive', 'Uploaded file object created in personal destination account', false, 'Needs review', true, ['Sharing state not yet retrieved', 'Download history pending'], { timelineEventId: 'tl-5', relatedAlertId: 'ALERT-1083', sourceContext: 'Destination metadata' }),
     ],
     entities: [
-      entity('ent-3001-1', 'Internal user', 'Rohan Mehta', 'High', 'Primary actor', 3, 5, '2m ago', 'User associated with the export and upload sequence.', 'Recent late-night sign-in and export volume exceed baseline.', ['Snowflake export role', 'Browser access'], ['DEV-4032', 'Snowflake customer billing database'], ['Confirm business reason', 'Review recent sign-in context'], ['Revoke sessions', 'Require credential reset']),
+      entity('ent-3001-1', 'Internal user', 'Rohan Mehta', 'High', 'Primary actor', 3, 5, '2m ago', 'User associated with the export and upload sequence.', 'Recent late-night sign-in and export volume exceed baseline.', ['Snowflake export role', 'Browser access'], ['DEV-4032', 'Snowflake customer billing database'], ['Confirm business reason', 'Review recent sign-in context'], ['Revoke sessions', 'Require credential reset'], {
+        relatedAlertIds: ['ALERT-1043', 'ALERT-1033', 'ALERT-1083'],
+        relatedCaseIds: ['CASE-3001'],
+        recentActivity: [
+          { id: 'ra-3001-1', timestamp: '10:04 PM', source: 'Microsoft Entra ID', title: 'Unusual sign-in', detail: 'Sign-in from unusual geography triggered the initial concern.', alertId: 'ALERT-1043', evidenceId: 'EV-3001-1' },
+          { id: 'ra-3001-2', timestamp: '10:09 PM', source: 'Snowflake', title: 'High-volume export', detail: 'Large customer billing export executed with analyst_read_export role.', alertId: 'ALERT-1043', evidenceId: 'EV-3001-1' },
+        ],
+        baselineSignals: [
+          { metric: 'Export size', baseline: '2,000 rows typical', observed: '85,000 rows', difference: '42x larger', whyItMatters: 'Large deviation suggests bulk extraction rather than routine analysis.' },
+          { metric: 'Login geography', baseline: 'Bengaluru, India', observed: 'Bucharest, Romania', difference: 'New region', whyItMatters: 'May indicate compromise or proxy usage.' },
+          { metric: 'Working hours', baseline: '9 AM to 7 PM', observed: '10 PM to 10:19 PM', difference: 'Off-hours activity', whyItMatters: 'Off-hours behavior increases compromise suspicion.' },
+        ],
+      }),
       entity('ent-3001-2', 'Database', 'Snowflake customer billing database', 'High', 'Primary source', 1, 3, '9m ago', 'Source of the exported customer billing dataset.', 'Export volume exceeds recent baseline by 18x.', ['Read export access'], ['Billing table', 'Query history'], ['Validate query text', 'Confirm exact table scope'], ['Suspend export permission']),
       entity('ent-3001-3', 'Device', 'Managed MacBook DEV-4032', 'Medium', 'Staging endpoint', 1, 2, '6m ago', 'Managed endpoint used for local staging prior to upload.', 'Browser upload pattern is unusual for the device owner.', ['Browser upload access', 'Downloads folder'], ['Local CSV artifact', 'Browser process'], ['Inspect endpoint timeline', 'Collect forensic context'], ['Isolate endpoint']),
       entity('ent-3001-4', 'Destination', 'Personal Google Drive', 'High', 'Exfiltration destination', 1, 2, '5m ago', 'Unmanaged personal destination receiving the staged export.', 'Destination has no prior sanctioned use in baseline.', ['Upload access'], ['Uploaded CSV'], ['Confirm receipt and reshare status'], ['Block destination domain']),
@@ -266,17 +283,17 @@ function case3002Fixture(item: WorkItem): InvestigationFixture {
       'Did the exposure originate from a recent backup or sharing change?',
     ],
     timelineEvents: [
-      timeline('tl-3002-1', '09:53 AM', 'Cloud', 'AWS S3', 'Public access validation succeeded', 'A validation probe confirmed that a production S3 resource was externally reachable.', 'ALERT-1019', 'AWS S3 bucket', 'Relevant', ['Object ACL and bucket policy both contributed to exposure']),
-      timeline('tl-3002-2', '10:01 AM', 'Repository', 'SharePoint', 'Repository link exposed broadly', 'A repository item with related customer data became accessible through a broad link.', 'ALERT-1049', 'SharePoint repository', 'Relevant', ['Broad link appears derived from an OAuth app workflow']),
-      timeline('tl-3002-3', '10:07 AM', 'Cloud', 'AWS S3', 'Partial containment applied', 'Public access block was applied to the most visible object path, but scope review continues.', 'CASE-3002', 'AWS S3 bucket', 'Needs review', ['Child objects still need validation']),
+      timeline('tl-3002-1', '09:53 AM', 'Cloud', 'AWS S3', 'Public access validation succeeded', 'A validation probe confirmed that a production S3 resource was externally reachable.', 'ALERT-1019', 'AWS S3 bucket', 'Relevant', ['Object ACL and bucket policy both contributed to exposure'], undefined, 'EV-3002-1'),
+      timeline('tl-3002-2', '10:01 AM', 'Repository', 'SharePoint', 'Repository link exposed broadly', 'A repository item with related customer data became accessible through a broad link.', 'ALERT-1049', 'SharePoint repository', 'Relevant', ['Broad link appears derived from an OAuth app workflow'], undefined, 'EV-3002-2'),
+      timeline('tl-3002-3', '10:07 AM', 'Cloud', 'AWS S3', 'Partial containment applied', 'Public access block was applied to the most visible object path, but scope review continues.', 'CASE-3002', 'AWS S3 bucket', 'Needs review', ['Child objects still need validation'], undefined, 'EV-3002-1'),
     ],
     alerts: [
-      alert('ALERT-1019', 'Sensitive data exposed through AWS S3', 'Critical', 'P1 · 92', 'CSPM / CNAPP', 'AWS S3', 2, 'Investigating', 'External validation confirmed public reachability', 'Relevant'),
-      alert('ALERT-1049', 'Sensitive data exposed through SharePoint', 'High', 'P2 · 83', 'DLP policy', 'SharePoint', 2, 'Triaged', 'Repository share scope overlaps with the exposed cloud path', 'Needs review'),
+      alert('ALERT-1019', 'Sensitive data exposed through AWS S3', 'Critical', 'P1 · 92', 'CSPM / CNAPP', 'AWS S3', 2, 'Investigating', 'External validation confirmed public reachability', 'Relevant', { parentCaseId: 'CASE-3002', linkedEvidenceIds: ['EV-3002-1'], relatedEntityIds: ['ent-3002-1'], detectedAt: '09:53 AM' }),
+      alert('ALERT-1049', 'Sensitive data exposed through SharePoint', 'High', 'P2 · 83', 'DLP policy', 'SharePoint', 2, 'Triaged', 'Repository share scope overlaps with the exposed cloud path', 'Needs review', { parentCaseId: 'CASE-3002', linkedEvidenceIds: ['EV-3002-2'], relatedEntityIds: ['ent-3002-2', 'ent-3002-3'], detectedAt: '10:01 AM' }),
     ],
     evidence: [
-      evidence('EV-3002-1', 'Public validation result', '09:53 AM', 'CSPM / CNAPP', 'AWS S3 bucket', 'Validation probe reached the exposed object path.', true, 'Relevant', true, ['Public HEAD request returned success']),
-      evidence('EV-3002-2', 'Repository sharing record', '10:01 AM', 'SharePoint', 'Document owner OAuth app', 'Broad repository link exposed a related document set.', true, 'Needs review', true, ['Repository link path still under review']),
+      evidence('EV-3002-1', 'Public validation result', '09:53 AM', 'CSPM / CNAPP', 'AWS S3 bucket', 'Validation probe reached the exposed object path.', true, 'Relevant', true, ['Public HEAD request returned success'], { timelineEventId: 'tl-3002-1', relatedAlertId: 'ALERT-1019', sourceContext: 'CNAPP validation output' }),
+      evidence('EV-3002-2', 'Repository sharing record', '10:01 AM', 'SharePoint', 'Document owner OAuth app', 'Broad repository link exposed a related document set.', true, 'Needs review', true, ['Repository link path still under review'], { timelineEventId: 'tl-3002-2', relatedAlertId: 'ALERT-1049', sourceContext: 'Repository sharing record' }),
     ],
     entities: [
       entity('ent-3002-1', 'Cloud resource', 'AWS S3 bucket', 'High', 'Primary exposed resource', 1, 2, '16m ago', 'Production bucket involved in the public exposure path.', 'Public access differs from expected production baseline.', ['Bucket policy', 'Object ACL'], ['Customer dataset object'], ['Confirm public reachability across child objects'], ['Block public access']),
@@ -327,14 +344,14 @@ function genericFixture(item: WorkItem): InvestigationFixture {
     hypothesis: `${item.risk_type} may have affected ${item.key_resource.toLowerCase()} and should be validated against the current business context.`,
     openQuestions: playbook.questionsToAnswer,
     timelineEvents: [
-      timeline(`${item.id}-tl-1`, item.detection_time, 'Detection', item.detection_source, item.title, item.preview.ai_summary, item.id, actor, 'Needs review', [item.preview.recommended_next_action]),
+      timeline(`${item.id}-tl-1`, item.detection_time, 'Detection', item.detection_source, item.title, item.preview.ai_summary, item.id, actor, 'Needs review', [item.preview.recommended_next_action], undefined, `${item.id}-ev-1`),
       timeline(`${item.id}-tl-2`, item.last_activity, 'Analyst action', 'CyberGuard', `Current status: ${item.status}`, `The item is currently assigned to ${item.assignee} with SLA ${item.sla}.`, item.id, item.assignee, 'Relevant', [`Containment: ${item.containment}`]),
     ],
     alerts: (item.preview.alerts ?? [{ id: item.id, title: item.title, severity: item.severity, priority: item.priority }]).map((alertItem, index) =>
       alert(alertItem.id, alertItem.title, alertItem.severity, alertItem.priority, item.detection_source, item.affected_systems[index] ?? item.affected_systems[0] ?? 'Mixed system', 1, item.status, 'Included from the current work item context', 'Needs review'),
     ),
     evidence: [
-      evidence(`${item.id}-ev-1`, 'Primary detection', item.detection_time, item.detection_source, actor, item.title, true, 'Needs review', true, [item.preview.ai_summary]),
+      evidence(`${item.id}-ev-1`, 'Primary detection', item.detection_time, item.detection_source, actor, item.title, true, 'Needs review', true, [item.preview.ai_summary], { timelineEventId: `${item.id}-tl-1`, relatedAlertId: item.id, sourceContext: item.detection_source }),
     ],
     entities: item.preview.actors_entities.slice(0, 3).map((entry, index) =>
       entity(`${item.id}-ent-${index + 1}`, 'Related entity', entry, 'Medium', 'Investigation context', 1, 1, item.last_activity, entry, 'Baseline comparison pending.', [], [], playbook.recommendedChecks.slice(0, 2), playbook.likelyResponseActions.slice(0, 2)),
@@ -438,8 +455,9 @@ function evidence(
   verdict: EvidenceItem['verdict'],
   attached: boolean,
   details: string[],
+  extras?: Partial<EvidenceItem>,
 ): EvidenceItem {
-  return { id, eventType, timestamp, sourceSystem, entity, description, rawRecordAvailable, verdict, attached, details };
+  return { id, eventType, timestamp, sourceSystem, entity, description, rawRecordAvailable, verdict, attached, details, ...extras };
 }
 
 function alert(
@@ -453,8 +471,9 @@ function alert(
   status: string,
   linkingRationale: string,
   relevance: IncludedAlertItem['relevance'],
+  extras?: Partial<IncludedAlertItem>,
 ): IncludedAlertItem {
-  return { id, title, severity, priority, detectionSource, system, linkedEventsCount, status, linkingRationale, relevance };
+  return { id, title, severity, priority, detectionSource, system, linkedEventsCount, status, linkingRationale, relevance, ...extras };
 }
 
 function entity(
@@ -472,6 +491,7 @@ function entity(
   relatedAssets: string[],
   suggestedChecks: string[],
   responseCandidates: string[],
+  extras?: Partial<InvestigationEntity>,
 ): InvestigationEntity {
   return {
     id,
@@ -488,6 +508,7 @@ function entity(
     relatedAssets,
     suggestedChecks,
     responseCandidates,
+    ...extras,
   };
 }
 

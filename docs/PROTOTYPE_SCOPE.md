@@ -68,6 +68,8 @@ Events / evidence
 → Resolution
 → Reopening when required
 
+Functional local interactions update shared queue, preview, investigation, and activity state. External source-system launches, remediation execution, approvals, and hunting remain simulated but explicitly labeled as prototype-only where surfaced.
+
 ## Pagination rationale
 
 Pagination keeps the table readable while supporting larger fixture sets. Page size changes, filters, search, sorting, and segments all work together and reset to page 1 when the result set changes.

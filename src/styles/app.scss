@@ -1518,11 +1518,12 @@ body {
 .cg-investigation-submodal__container {
   width: min(42rem, 92vw);
   min-width: 0;
-  max-height: 82vh;
+  max-height: 74vh;
 }
 
 .cg-investigation-detail-dialog .cds--modal-container {
-  max-height: 82vh;
+  max-height: 74vh;
+  grid-template-rows: auto minmax(0, 1fr) auto;
 }
 
 .cg-investigation-detail-dialog__header.cds--modal-header {
@@ -1559,10 +1560,11 @@ body {
 }
 
 .cg-investigation-detail-dialog__body.cds--modal-content {
-  padding: 0 1rem 1.5rem;
+  padding: 0 1rem 2.5rem;
   display: grid;
   gap: 1rem;
   overflow: auto;
+  min-height: 0;
 }
 
 .cg-investigation-detail-dialog__body section {
@@ -1709,6 +1711,16 @@ body {
   gap: 0.75rem;
 }
 
+.cg-queue-preset-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.125rem 0.25rem 0.125rem 0.5rem;
+  border: 1px solid #c6dafc;
+  background: #edf5ff;
+  color: #0f62fe;
+}
+
 .cg-overview-list > div {
   grid-template-columns: 1fr auto;
   align-items: center;
@@ -1728,6 +1740,12 @@ body {
 
 .cg-checkbox-grid {
   display: grid;
+  gap: 0.5rem;
+}
+
+.cg-tag-editor-row {
+  display: inline-flex;
+  align-items: center;
   gap: 0.5rem;
 }
 

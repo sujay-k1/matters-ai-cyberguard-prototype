@@ -90,6 +90,7 @@ export interface WorkItem {
     previousSeverity: string;
   };
   classification?: import('./investigation').WorkItemClassification;
+  classificationRecord?: import('./investigation').ClassificationRecord;
   resolution?: import('./investigation').ResolutionRecord;
   lastResolution?: import('./investigation').ResolutionRecord;
   reopenedCount?: number;

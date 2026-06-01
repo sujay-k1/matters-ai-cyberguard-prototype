@@ -67,6 +67,9 @@ export interface EvidenceItem {
   rawRecordAvailable: boolean;
   verdict: InvestigationRelevance;
   attached: boolean;
+  timelineEventId?: string;
+  relatedAlertId?: string;
+  sourceContext?: string;
   details: string[];
 }
 
@@ -81,6 +84,10 @@ export interface IncludedAlertItem {
   status: string;
   linkingRationale: string;
   relevance: InvestigationRelevance;
+  parentCaseId?: string | null;
+  linkedEvidenceIds?: string[];
+  relatedEntityIds?: string[];
+  detectedAt?: string;
 }
 
 export interface InvestigationEntity {
@@ -98,6 +105,24 @@ export interface InvestigationEntity {
   relatedAssets: string[];
   suggestedChecks: string[];
   responseCandidates: string[];
+  recentActivity?: Array<{
+    id: string;
+    timestamp: string;
+    source: string;
+    title: string;
+    detail: string;
+    evidenceId?: string;
+    alertId?: string;
+  }>;
+  baselineSignals?: Array<{
+    metric: string;
+    baseline: string;
+    observed: string;
+    difference: string;
+    whyItMatters: string;
+  }>;
+  relatedAlertIds?: string[];
+  relatedCaseIds?: string[];
 }
 
 export interface InvestigationResponseAction {
@@ -158,6 +183,16 @@ export interface ResolutionRecord {
   detachedAlertIds?: string[];
 }
 
+export interface ClassificationRecord {
+  classification: WorkItemClassification;
+  comment: string;
+  updatedBy: string;
+  updatedAt: string;
+  duplicateCaseId?: string;
+  exceptionOwner?: string;
+  tuningFeedbackCreated?: boolean;
+}
+
 export interface HuntResult {
   id: string;
   type: string;
@@ -176,6 +211,8 @@ export interface EscalationRecord {
   note: string;
   createdBy: string;
   createdAt: string;
+  taskOwner?: string;
+  notifyDataOwner: boolean;
 }
 
 export interface InvestigationPlaybook {
@@ -231,6 +268,7 @@ export interface InvestigationWorkspaceState {
   actions: InvestigationResponseAction[];
   activity: InvestigationActivityItem[];
   classification?: WorkItemClassification;
+  classificationRecord?: ClassificationRecord;
   resolution?: ResolutionRecord;
   lastResolution?: ResolutionRecord;
   escalations: EscalationRecord[];

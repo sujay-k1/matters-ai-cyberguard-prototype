@@ -7,6 +7,7 @@ interface InvestigationEntitiesProps {
   onOpenEntity: (id: string) => void;
   onGoHunt: () => void;
   onAddNote: () => void;
+  onCompareBaseline: (id: string) => void;
 }
 
 export function InvestigationEntities({
@@ -14,6 +15,7 @@ export function InvestigationEntities({
   onOpenEntity,
   onGoHunt,
   onAddNote,
+  onCompareBaseline,
 }: InvestigationEntitiesProps) {
   const [viewMode, setViewMode] = useState<'list' | 'relationship'>('list');
 
@@ -79,7 +81,7 @@ export function InvestigationEntities({
                   <Button kind="ghost" size="sm" onClick={() => onOpenEntity(entity.id)}>
                     Open entity details
                   </Button>
-                  <Button kind="ghost" size="sm">
+                  <Button kind="ghost" size="sm" onClick={() => onCompareBaseline(entity.id)}>
                     Compare with baseline
                   </Button>
                   <Button kind="ghost" size="sm" onClick={onGoHunt}>

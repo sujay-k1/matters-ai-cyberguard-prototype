@@ -11,8 +11,13 @@
 - Keep remediation inside the Investigation `Actions` tab.
 - Resolve-with-exception requires a mandatory comment.
 - Preserve child-alert history when resolving, detaching, or reopening.
+- Preserve sticky investigation-header actions.
+- Do not restore the investigation `ModalFooter`.
+- No visible inert controls: wire, hide, or clearly disable them.
+- Hide or disable unavailable evidence actions instead of leaving dead-end buttons.
 - Do not build a complex relationship graph.
 - Do not build a full hunt engine.
 - Run `npm run build` before committing.
+- Run the interaction audit before committing.
 - Use Stitch MCP read-only.
 - Do not modify Stitch screens.

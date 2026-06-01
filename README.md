@@ -27,8 +27,11 @@ npm run build
 - Right-side triage-first preview drawer for alerts and cases with sticky decision header, inline assignee/status actions, classification, recommended next step, quick facts, and progressive disclosure accordions
 - Carbon `ComposedModal` investigation workspace with Summary, Timeline, Alerts & Evidence, Entities & Assets, Actions, and Activity tabs
 - Shared local workflow state so investigation updates survive modal close and reopen during the current browser session
+- Interaction hardening pass so core visible controls do not dead-end silently; where an action remains simulated, the UI now says so explicitly
+- Investigation workspace keeps its header-first action model; the workspace footer remains intentionally removed
 - Guarded response-action workflow with approval, rejection, failure, retry, cancellation, derived containment, and simulated remediation progress
 - Classification, resolution, resolve-with-exception, escalation / handoff, and lightweight hunt-result attachment flows
+- Timeline and evidence attachment decisions stay synchronized, alert detachment restores standalone queue work, and Overview tiles apply real queue presets
 - Module-level Activity Log with row detail and Open work item routing back into the queue
 - Analyst Overview with immediate-attention metrics, workflow load, and click-through into the Work Queue
 - Bulk selection, assignment, status change, tagging, and case consolidation review flow
@@ -67,6 +70,10 @@ npm run build
 - `/?state=handoff`
 - `/?state=raw-evidence`
 - `/?state=hunt-results`
+- `/?state=timeline-detached`
+- `/?state=alert-detail`
+- `/?state=entity-baseline`
+- `/?state=move-alert`
 - `/?state=module-activity-log`
 - `/?state=overview`
 - `/?state=filter-open`
@@ -85,6 +92,7 @@ https://github.com/sujay-k1/matters-ai-cyberguard-prototype
 - Local UI state resets on refresh
 - Response execution is simulated locally and does not trigger real external actions
 - No real external remediation, source-system links, or hunt execution occurs
+- Core visible controls are wired locally, but external-source actions remain explicitly prototype-only
 - Overview, Activity Log, and workflow metrics are derived from local fixture state plus local analyst interactions
 - Resolve-with-exception, escalation, and approval flows are prototype-only governance interactions
 - Stitch references were used read-only and did not include dedicated filter-open or bulk-selection screens

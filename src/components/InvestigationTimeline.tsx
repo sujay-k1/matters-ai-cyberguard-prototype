@@ -1,4 +1,4 @@
-import { Accordion, AccordionItem, Button, Dropdown, Search, Tag } from '@carbon/react';
+import { Accordion, AccordionItem, Button, Dropdown, Search, Tag, Tooltip } from '@carbon/react';
 import { useMemo, useState } from 'react';
 import type { TimelineEvent } from '../types/investigation';
 import { compareTimeRange } from '../hooks/useWorkflowState';
@@ -163,13 +163,19 @@ export function InvestigationTimeline({
               >
                 Open related alert
               </Button>
-              <Button
-                kind="ghost"
-                size="sm"
-                onClick={() => event.evidenceId && onOpenEvidence(event.evidenceId)}
-              >
-                View raw evidence
-              </Button>
+              {event.evidenceId ? (
+                <Button kind="ghost" size="sm" onClick={() => onOpenEvidence(event.evidenceId!)}>
+                  View raw evidence
+                </Button>
+              ) : (
+                <Tooltip label="Raw evidence unavailable for this normalized event" align="top">
+                  <span>
+                    <Button kind="ghost" size="sm" disabled>
+                      View raw evidence
+                    </Button>
+                  </span>
+                </Tooltip>
+              )}
             </div>
           </div>
         ))}
