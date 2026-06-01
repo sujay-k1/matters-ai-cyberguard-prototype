@@ -66,7 +66,7 @@ export function useDemoUIState() {
     [],
   );
 
-  const surfaceStates = SURFACE_MAP[state ?? 'queue-loading'] ?? {};
+  const surfaceStates = (state ? SURFACE_MAP[state] : undefined) ?? {};
 
   return {
     state,
