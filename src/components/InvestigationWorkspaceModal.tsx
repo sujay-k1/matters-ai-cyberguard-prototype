@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ComposedModal,
   ModalBody,
-  ModalFooter,
   ModalHeader,
   Tab,
   TabList,
@@ -464,6 +463,8 @@ export function InvestigationWorkspaceModal({
         ? 'Mark failed'
         : selectedAction.currentState === 'Failed'
           ? 'Escalate'
+          : selectedAction.currentState === 'Recommended' || selectedAction.currentState === 'Approved' || selectedAction.currentState === 'Rejected'
+            ? 'Cancel action'
           : 'Close'
     : undefined;
 
@@ -658,20 +659,6 @@ export function InvestigationWorkspaceModal({
             </div>
           </Tabs>
         </ModalBody>
-        <ModalFooter className="cg-investigation-modal__footer">
-          <button type="button" className="cds--btn cds--btn--secondary" onClick={onClose}>
-            Close workspace
-          </button>
-          <button type="button" className="cds--btn cds--btn--ghost" onClick={() => setNoteModalOpen(true)}>
-            Add note
-          </button>
-          <button type="button" className="cds--btn cds--btn--ghost" onClick={() => onTabChange('actions')}>
-            Go to Actions
-          </button>
-          <button type="button" className="cds--btn cds--btn--primary" onClick={onOpenResolve}>
-            {item.item_type === 'case' ? 'Resolve case' : 'Resolve alert'}
-          </button>
-        </ModalFooter>
       </ComposedModal>
 
       <InvestigationNoteModal

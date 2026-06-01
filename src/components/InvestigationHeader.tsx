@@ -77,7 +77,12 @@ export function InvestigationHeader({
         </div>
         <div className="cg-investigation-header__topbar-actions">
           <div className="cg-preview-more-actions cg-investigation-more-actions" ref={moreRef}>
-            <span>More actions</span>
+            <Button kind="tertiary" size="sm" onClick={onClassifyItem}>
+              Classify item
+            </Button>
+            <Button kind="primary" size="sm" onClick={onResolveItem}>
+              {item.item_type === 'case' ? 'Resolve case' : 'Resolve alert'}
+            </Button>
             <button
               type="button"
               className={`cg-icon-action cg-investigation-more-actions__trigger${moreOpen ? ' is-open' : ''}`}
@@ -98,12 +103,6 @@ export function InvestigationHeader({
                 </button>
                 <button type="button" role="menuitem" onClick={() => { setMoreOpen(false); onAddNote(); }}>
                   Add comment
-                </button>
-                <button type="button" role="menuitem" onClick={() => { setMoreOpen(false); onClassifyItem(); }}>
-                  Classify item
-                </button>
-                <button type="button" role="menuitem" onClick={() => { setMoreOpen(false); onResolveItem(); }}>
-                  {item.item_type === 'case' ? 'Resolve case' : 'Resolve alert'}
                 </button>
                 <button type="button" role="menuitem" onClick={() => { setMoreOpen(false); onGoToActivity(); }}>
                   View activity

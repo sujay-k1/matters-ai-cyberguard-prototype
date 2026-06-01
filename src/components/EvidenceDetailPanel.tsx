@@ -1,6 +1,7 @@
 import { Button, Tag } from '@carbon/react';
 import { useState } from 'react';
 import type { EvidenceItem } from '../types/investigation';
+import { InvestigationDetailDialog } from './InvestigationDetailDialog';
 
 interface EvidenceDetailPanelProps {
   evidence: EvidenceItem | null;
@@ -20,20 +21,35 @@ export function EvidenceDetailPanel({
   onAddNote,
 }: EvidenceDetailPanelProps) {
   const [showRaw, setShowRaw] = useState(false);
+  const open = Boolean(evidence);
   if (!evidence) return null;
 
   return (
-    <aside className="cg-investigation-detail-panel" aria-label="Evidence details">
-      <div className="cg-investigation-detail-panel__header">
-        <div>
-          <p className="cg-eyebrow">Evidence detail</p>
-          <h3>{evidence.id}</h3>
-        </div>
-        <Button kind="ghost" size="sm" onClick={onClose}>
-          Close
-        </Button>
-      </div>
-      <div className="cg-investigation-detail-panel__body">
+    <InvestigationDetailDialog
+      open={open}
+      ariaLabel="Evidence details"
+      title={evidence.id}
+      onClose={onClose}
+      footer={
+        <>
+          <Button kind="ghost" size="sm" onClick={() => onToggleVerdict('Relevant')}>
+            Mark relevant
+          </Button>
+          <Button kind="ghost" size="sm" onClick={() => onToggleVerdict('Irrelevant')}>
+            Mark irrelevant
+          </Button>
+          <Button kind="ghost" size="sm" onClick={onToggleAttached}>
+            {evidence.attached ? 'Detach from case' : 'Attach to case'}
+          </Button>
+          <Button kind="ghost" size="sm" onClick={onGoHunt}>
+            Go hunt
+          </Button>
+          <Button kind="secondary" size="sm" onClick={onAddNote}>
+            Add note
+          </Button>
+        </>
+      }
+    >
         <div className="cg-investigation-definition-list">
           <div>
             <dt>Event type</dt>
@@ -98,25 +114,7 @@ export function EvidenceDetailPanel({
             ) : null}
           </section>
         ) : null}
-      </div>
-      <div className="cg-investigation-detail-panel__footer">
-        <Button kind="ghost" size="sm" onClick={() => onToggleVerdict('Relevant')}>
-          Mark relevant
-        </Button>
-        <Button kind="ghost" size="sm" onClick={() => onToggleVerdict('Irrelevant')}>
-          Mark irrelevant
-        </Button>
-        <Button kind="ghost" size="sm" onClick={onToggleAttached}>
-          {evidence.attached ? 'Detach from case' : 'Attach to case'}
-        </Button>
-        <Button kind="ghost" size="sm" onClick={onGoHunt}>
-          Go hunt
-        </Button>
-        <Button kind="secondary" size="sm" onClick={onAddNote}>
-          Add note
-        </Button>
-      </div>
-    </aside>
+    </InvestigationDetailDialog>
   );
 }
 

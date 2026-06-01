@@ -1,5 +1,6 @@
 import { Button, Tag } from '@carbon/react';
 import type { InvestigationResponseAction } from '../types/investigation';
+import { InvestigationDetailDialog } from './InvestigationDetailDialog';
 
 interface ResponseActionDetailPanelProps {
   action: InvestigationResponseAction | null;
@@ -18,20 +19,30 @@ export function ResponseActionDetailPanel({
   onSecondaryAction,
   secondaryActionLabel,
 }: ResponseActionDetailPanelProps) {
+  const open = Boolean(action);
   if (!action) return null;
 
   return (
-    <aside className="cg-investigation-detail-panel" aria-label="Response action detail">
-      <div className="cg-investigation-detail-panel__header">
-        <div>
-          <p className="cg-eyebrow">Response action</p>
-          <h3>{action.title}</h3>
-        </div>
-        <Button kind="ghost" size="sm" onClick={onClose}>
-          Close
-        </Button>
-      </div>
-      <div className="cg-investigation-detail-panel__body">
+    <InvestigationDetailDialog
+      open={open}
+      ariaLabel="Response action detail"
+      title={action.title}
+      onClose={onClose}
+      footer={
+        <>
+          {secondaryActionLabel && onSecondaryAction ? (
+            <Button kind="ghost" size="sm" onClick={onSecondaryAction}>
+              {secondaryActionLabel}
+            </Button>
+          ) : null}
+          {primaryActionLabel ? (
+            <Button kind="secondary" size="sm" onClick={onPrimaryAction}>
+              {primaryActionLabel}
+            </Button>
+          ) : null}
+        </>
+      }
+    >
         <div className="cg-investigation-definition-list">
           <div><dt>State</dt><dd><Tag type="cool-gray">{action.currentState}</Tag></dd></div>
           <div><dt>Target entity</dt><dd>{action.affectedEntity}</dd></div>
@@ -44,19 +55,6 @@ export function ResponseActionDetailPanel({
         <section><h4>Expected effect</h4><p>{action.expectedEffect}</p></section>
         <section><h4>Business impact</h4><p>{action.businessImpact}</p></section>
         {action.failureReason ? <section><h4>Failure reason</h4><p>{action.failureReason}</p></section> : null}
-      </div>
-      <div className="cg-investigation-detail-panel__footer">
-        {secondaryActionLabel && onSecondaryAction ? (
-          <Button kind="ghost" size="sm" onClick={onSecondaryAction}>
-            {secondaryActionLabel}
-          </Button>
-        ) : null}
-        {primaryActionLabel ? (
-          <Button kind="secondary" size="sm" onClick={onPrimaryAction}>
-            {primaryActionLabel}
-          </Button>
-        ) : null}
-      </div>
-    </aside>
+    </InvestigationDetailDialog>
   );
 }

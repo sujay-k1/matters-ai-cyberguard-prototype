@@ -111,12 +111,11 @@ export function InvestigationTimeline({
         {filteredEvents.map((event) => (
           <div key={event.id} className="cg-investigation-timeline-item">
             <div className="cg-investigation-timeline-item__header">
-              <div>
+              <div className="cg-investigation-timeline-item__header-copy">
                 <p className="cg-eyebrow">
-                  {event.timestamp} · {event.category}
+                  {event.timestamp} · {event.category} · {event.systemName}
                 </p>
                 <h3>{event.title}</h3>
-                <p>{event.systemName}</p>
               </div>
               <Tag type={relevanceTagType(event.relevance)}>{event.relevance}</Tag>
             </div>
@@ -135,11 +134,17 @@ export function InvestigationTimeline({
               </AccordionItem>
             </Accordion>
             <div className="cg-investigation-action-row">
-              <Button kind="ghost" size="sm" onClick={() => onUpdateRelevance(event.id, 'Relevant')}>
-                Mark relevant
-              </Button>
-              <Button kind="ghost" size="sm" onClick={() => onUpdateRelevance(event.id, 'Irrelevant')}>
-                Mark irrelevant
+              <Button
+                kind="ghost"
+                size="sm"
+                onClick={() =>
+                  onUpdateRelevance(
+                    event.id,
+                    event.relevance === 'Relevant' ? 'Irrelevant' : 'Relevant',
+                  )
+                }
+              >
+                {event.relevance === 'Relevant' ? 'Mark irrelevant' : 'Mark relevant'}
               </Button>
               <Button kind="ghost" size="sm" onClick={onAddNote}>
                 Add note

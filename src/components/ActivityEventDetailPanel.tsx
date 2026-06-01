@@ -1,5 +1,6 @@
 import { Button } from '@carbon/react';
 import type { WorkflowActivityEvent } from '../types/investigation';
+import { InvestigationDetailDialog } from './InvestigationDetailDialog';
 
 interface ActivityEventDetailPanelProps {
   event: WorkflowActivityEvent | null;
@@ -8,20 +9,21 @@ interface ActivityEventDetailPanelProps {
 }
 
 export function ActivityEventDetailPanel({ event, onClose, onOpenWorkItem }: ActivityEventDetailPanelProps) {
+  const open = Boolean(event);
   if (!event) return null;
 
   return (
-    <aside className="cg-investigation-detail-panel" aria-label="Activity event detail">
-      <div className="cg-investigation-detail-panel__header">
-        <div>
-          <p className="cg-eyebrow">{event.actorType}</p>
-          <h3>{event.activityType}</h3>
-        </div>
-        <Button kind="ghost" size="sm" onClick={onClose}>
-          Close
+    <InvestigationDetailDialog
+      open={open}
+      ariaLabel="Activity event detail"
+      title={event.activityType}
+      onClose={onClose}
+      footer={
+        <Button kind="secondary" size="sm" onClick={() => onOpenWorkItem(event.itemId)}>
+          Open work item
         </Button>
-      </div>
-      <div className="cg-investigation-detail-panel__body">
+      }
+    >
         <div className="cg-investigation-definition-list">
           <div><dt>Timestamp</dt><dd>{event.timestamp}</dd></div>
           <div><dt>Actor</dt><dd>{event.actor}</dd></div>
@@ -44,12 +46,6 @@ export function ActivityEventDetailPanel({ event, onClose, onOpenWorkItem }: Act
             <p>{event.comment}</p>
           </section>
         ) : null}
-      </div>
-      <div className="cg-investigation-detail-panel__footer">
-        <Button kind="secondary" size="sm" onClick={() => onOpenWorkItem(event.itemId)}>
-          Open work item
-        </Button>
-      </div>
-    </aside>
+    </InvestigationDetailDialog>
   );
 }

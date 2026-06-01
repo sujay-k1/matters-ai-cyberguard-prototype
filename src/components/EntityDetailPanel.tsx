@@ -1,5 +1,6 @@
 import { Button, Tag } from '@carbon/react';
 import type { InvestigationEntity } from '../types/investigation';
+import { InvestigationDetailDialog } from './InvestigationDetailDialog';
 
 interface EntityDetailPanelProps {
   entity: InvestigationEntity | null;
@@ -9,20 +10,32 @@ interface EntityDetailPanelProps {
 }
 
 export function EntityDetailPanel({ entity, onClose, onGoHunt, onAddNote }: EntityDetailPanelProps) {
+  const open = Boolean(entity);
   if (!entity) return null;
 
   return (
-    <aside className="cg-investigation-detail-panel" aria-label="Entity details">
-      <div className="cg-investigation-detail-panel__header">
-        <div>
-          <p className="cg-eyebrow">Entity profile</p>
-          <h3>{entity.displayName}</h3>
-        </div>
-        <Button kind="ghost" size="sm" onClick={onClose}>
-          Close
-        </Button>
-      </div>
-      <div className="cg-investigation-detail-panel__body">
+    <InvestigationDetailDialog
+      open={open}
+      ariaLabel="Entity details"
+      title={entity.displayName}
+      onClose={onClose}
+      footer={
+        <>
+          <Button kind="ghost" size="sm">
+            View all activity
+          </Button>
+          <Button kind="ghost" size="sm">
+            Compare with baseline
+          </Button>
+          <Button kind="ghost" size="sm" onClick={onGoHunt}>
+            Go hunt
+          </Button>
+          <Button kind="secondary" size="sm" onClick={onAddNote}>
+            Add note
+          </Button>
+        </>
+      }
+    >
         <div className="cg-investigation-definition-list">
           <div>
             <dt>Type</dt>
@@ -76,22 +89,7 @@ export function EntityDetailPanel({ entity, onClose, onGoHunt, onAddNote }: Enti
             {entity.responseCandidates.map((entry) => <li key={entry}>{entry}</li>)}
           </ul>
         </section>
-      </div>
-      <div className="cg-investigation-detail-panel__footer">
-        <Button kind="ghost" size="sm">
-          View all activity
-        </Button>
-        <Button kind="ghost" size="sm">
-          Compare with baseline
-        </Button>
-        <Button kind="ghost" size="sm" onClick={onGoHunt}>
-          Go hunt
-        </Button>
-        <Button kind="secondary" size="sm" onClick={onAddNote}>
-          Add note
-        </Button>
-      </div>
-    </aside>
+    </InvestigationDetailDialog>
   );
 }
 
