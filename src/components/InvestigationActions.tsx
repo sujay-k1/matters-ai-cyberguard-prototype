@@ -23,7 +23,6 @@ export function InvestigationActions({
 }: InvestigationActionsProps) {
   return (
     <div className="cg-investigation-tab-stack">
-      <p className="cg-summary-line">Response execution is simulated in this prototype.</p>
       {ACTION_STATES.map((state) => {
         const grouped = actions.filter((action) => action.currentState === state);
         if (!grouped.length) return null;

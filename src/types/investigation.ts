@@ -134,7 +134,7 @@ export interface SystemEvidenceModule {
 export interface InvestigationFixture {
   itemId: string;
   summaryParagraphs: string[];
-  quickFacts: Array<{ label: string; value: string }>;
+  quickFacts: Array<{ label: string; value: string | string[] }>;
   scopeSummary: Array<{ label: string; value: string }>;
   recommendedChecks: InvestigationTask[];
   hypothesis: string;

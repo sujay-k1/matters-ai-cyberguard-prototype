@@ -1,9 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Button,
   ComposedModal,
   ModalBody,
-  ModalFooter,
   ModalHeader,
   Tab,
   TabList,
@@ -72,6 +70,20 @@ export function InvestigationWorkspaceModal({
   const [taskModalOpen, setTaskModalOpen] = useState(false);
   const [taskTitleDraft, setTaskTitleDraft] = useState('');
   const [taskOwnerDraft, setTaskOwnerDraft] = useState(currentAnalyst);
+  const [taskAssignModalOpen, setTaskAssignModalOpen] = useState(false);
+  const [taskAssignTargetId, setTaskAssignTargetId] = useState<string | null>(null);
+  const [hypothesisModalOpen, setHypothesisModalOpen] = useState(false);
+  const [hypothesisDraft, setHypothesisDraft] = useState('');
+  const panelsScrollRef = useRef<HTMLDivElement | null>(null);
+  const tabScrollPositionsRef = useRef<Record<InvestigationTabId, number>>({
+    summary: 0,
+    timeline: 0,
+    evidence: 0,
+    entities: 0,
+    actions: 0,
+    activity: 0,
+  });
+  const previousTabRef = useRef<InvestigationTabId>(activeTab);
 
   useEffect(() => {
     setWorkspace(createWorkspaceStateFromFixture(context.fixture));
@@ -79,7 +91,32 @@ export function InvestigationWorkspaceModal({
     setNoteDraft('');
     setTaskTitleDraft('');
     setTaskOwnerDraft(currentAnalyst);
+    setTaskAssignModalOpen(false);
+    setTaskAssignTargetId(null);
+    setHypothesisModalOpen(false);
+    setHypothesisDraft('');
+    tabScrollPositionsRef.current = {
+      summary: 0,
+      timeline: 0,
+      evidence: 0,
+      entities: 0,
+      actions: 0,
+      activity: 0,
+    };
+    previousTabRef.current = activeTab;
   }, [context.fixture, currentAnalyst]);
+
+  useEffect(() => {
+    const container = panelsScrollRef.current;
+    if (!container) return;
+
+    const previousTab = previousTabRef.current;
+    tabScrollPositionsRef.current[previousTab] = container.scrollTop;
+    previousTabRef.current = activeTab;
+
+    const nextScrollTop = tabScrollPositionsRef.current[activeTab] ?? 0;
+    container.scrollTo({ top: nextScrollTop, behavior: 'auto' });
+  }, [activeTab]);
 
   const activityFeed = useMemo(
     () => mergeActivity(workspace.activity, item.localHistory ?? []),
@@ -88,6 +125,7 @@ export function InvestigationWorkspaceModal({
 
   const selectedEvidence = workspace.evidence.find((entry) => entry.id === workspace.selectedEvidenceId) ?? null;
   const selectedEntity = workspace.entities.find((entry) => entry.id === workspace.selectedEntityId) ?? null;
+  const taskAssignTarget = workspace.tasks.find((task) => task.id === taskAssignTargetId) ?? null;
 
   const appendActivity = (entry: InvestigationActivityItem) => {
     setWorkspace((current) => ({
@@ -117,14 +155,19 @@ export function InvestigationWorkspaceModal({
   };
 
   const handleSaveHypothesis = () => {
+    setWorkspace((current) => ({
+      ...current,
+      hypothesis: hypothesisDraft.trim(),
+    }));
     appendActivity({
       id: `activity-${Date.now()}`,
       timestamp: 'Just now',
       actor: currentAnalyst,
       actorType: 'Analyst',
       activityType: 'Hypothesis updated',
-      description: workspace.hypothesis,
+      description: hypothesisDraft.trim(),
     });
+    setHypothesisModalOpen(false);
     onToast('success', 'Hypothesis saved', `Updated the current hypothesis for ${item.id}.`);
   };
 
@@ -152,6 +195,32 @@ export function InvestigationWorkspaceModal({
     setTaskTitleDraft('');
     setTaskOwnerDraft(currentAnalyst);
     onToast('success', 'Task added', `${nextTask.title} added to the investigation plan.`);
+  };
+
+  const handleAssignTaskOwner = () => {
+    if (!taskAssignTargetId || !taskOwnerDraft.trim()) return;
+    const task = workspace.tasks.find((entry) => entry.id === taskAssignTargetId);
+    if (!task) return;
+
+    setWorkspace((current) => ({
+      ...current,
+      tasks: current.tasks.map((entry) =>
+        entry.id === taskAssignTargetId ? { ...entry, owner: taskOwnerDraft } : entry,
+      ),
+    }));
+    appendActivity({
+      id: `activity-${Date.now() + 3}`,
+      timestamp: 'Just now',
+      actor: currentAnalyst,
+      actorType: 'Analyst',
+      activityType: 'Task owner changed',
+      description: task.title,
+      previousValue: task.owner,
+      newValue: taskOwnerDraft,
+    });
+    setTaskAssignModalOpen(false);
+    setTaskAssignTargetId(null);
+    onToast('success', 'Task owner updated', `${task.title} assigned to ${taskOwnerDraft}.`);
   };
 
   const addNote = (text: string) => {
@@ -275,10 +344,14 @@ export function InvestigationWorkspaceModal({
           <InvestigationHeader
             item={item}
             currentAnalyst={currentAnalyst}
+            onClose={onClose}
             onAssignToMe={onAssignToMe}
             onReassign={onReassign}
             onChangeStatus={onChangeStatus}
             onChangeSeverity={onChangeSeverity}
+            onAddNote={() => setNoteModalOpen(true)}
+            onGoToActions={() => onTabChange('actions')}
+            onGoToActivity={() => onTabChange('activity')}
           />
         </ModalHeader>
         <ModalBody hasScrollingContent className="cg-investigation-modal__body">
@@ -292,23 +365,30 @@ export function InvestigationWorkspaceModal({
               <Tab>Activity</Tab>
             </TabList>
             <div className="cg-investigation-modal__workspace">
-              <div className="cg-investigation-modal__panels">
+              <div
+                className="cg-investigation-modal__panels"
+                ref={panelsScrollRef}
+                onScroll={(event) => {
+                  tabScrollPositionsRef.current[activeTab] = event.currentTarget.scrollTop;
+                }}
+              >
                 <TabPanels>
                   <TabPanel>
                     <InvestigationSummary
                       context={context}
                       item={item}
-                      hypothesis={workspace.hypothesis}
-                      onHypothesisChange={(value) =>
-                        setWorkspace((current) => ({
-                          ...current,
-                          hypothesis: value,
-                        }))
-                      }
-                      onSaveHypothesis={handleSaveHypothesis}
+                      quickNote={quickNote}
+                      onQuickNoteChange={setQuickNote}
+                      onAddQuickNote={handleAddQuickNote}
                       tasks={workspace.tasks}
                       onToggleTask={handleToggleTask}
                       onOpenTaskModal={() => setTaskModalOpen(true)}
+                      onOpenTaskAssignModal={(taskId) => {
+                        const target = workspace.tasks.find((task) => task.id === taskId);
+                        setTaskAssignTargetId(taskId);
+                        setTaskOwnerDraft(target?.owner ?? currentAnalyst);
+                        setTaskAssignModalOpen(true);
+                      }}
                       onTabChange={onTabChange}
                     />
                   </TabPanel>
@@ -362,11 +442,10 @@ export function InvestigationWorkspaceModal({
               <InvestigationRightRail
                 context={context}
                 hypothesis={workspace.hypothesis}
-                tasks={workspace.tasks}
-                quickNote={quickNote}
-                onQuickNoteChange={setQuickNote}
-                onAddQuickNote={handleAddQuickNote}
-                onOpenTaskModal={() => setTaskModalOpen(true)}
+                onOpenHypothesisModal={() => {
+                  setHypothesisDraft(workspace.hypothesis);
+                  setHypothesisModalOpen(true);
+                }}
               />
 
               {selectedEvidence ? (
@@ -398,15 +477,6 @@ export function InvestigationWorkspaceModal({
             </div>
           </Tabs>
         </ModalBody>
-        <ModalFooter className="cg-investigation-modal__footer">
-          <Button kind="secondary" onClick={onClose}>
-            Close workspace
-          </Button>
-          <Button kind="ghost" onClick={() => setNoteModalOpen(true)}>
-            Add note
-          </Button>
-          <Button onClick={() => onTabChange('actions')}>Go to Actions</Button>
-        </ModalFooter>
       </ComposedModal>
 
       <InvestigationNoteModal
@@ -417,8 +487,21 @@ export function InvestigationWorkspaceModal({
         onSubmit={handleSubmitNoteModal}
       />
 
+      <InvestigationNoteModal
+        open={hypothesisModalOpen}
+        value={hypothesisDraft}
+        title="Update hypothesis"
+        primaryButtonText="Save hypothesis"
+        labelText="Hypothesis"
+        placeholder="Summarize the current working hypothesis for this investigation"
+        onChange={setHypothesisDraft}
+        onClose={() => setHypothesisModalOpen(false)}
+        onSubmit={handleSaveHypothesis}
+      />
+
       <InvestigationTaskModal
         open={taskModalOpen}
+        mode="add"
         title={taskTitleDraft}
         owner={taskOwnerDraft}
         owners={TASK_OWNERS}
@@ -426,6 +509,21 @@ export function InvestigationWorkspaceModal({
         onOwnerChange={setTaskOwnerDraft}
         onClose={() => setTaskModalOpen(false)}
         onSubmit={handleAddTask}
+      />
+
+      <InvestigationTaskModal
+        open={taskAssignModalOpen}
+        mode="assign"
+        title={taskAssignTarget?.title ?? ''}
+        owner={taskOwnerDraft}
+        owners={TASK_OWNERS}
+        onTitleChange={() => {}}
+        onOwnerChange={setTaskOwnerDraft}
+        onClose={() => {
+          setTaskAssignModalOpen(false);
+          setTaskAssignTargetId(null);
+        }}
+        onSubmit={handleAssignTaskOwner}
       />
     </>
   );

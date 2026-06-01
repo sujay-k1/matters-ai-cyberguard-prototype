@@ -161,11 +161,6 @@ function case3001Fixture(item: WorkItem): InvestigationFixture {
     quickFacts: buildQuickFacts(item),
     scopeSummary: [
       { label: 'Systems involved', value: String(item.affected_systems.length) },
-      { label: 'Resources involved', value: 'Snowflake export, managed browser session, VPN egress path' },
-      { label: 'Actors involved', value: 'Rohan Mehta, unknown endpoint actor, cloud admin device context' },
-      { label: 'Alert count', value: String(item.alert_count ?? 0) },
-      { label: 'Entity count', value: '7' },
-      { label: 'Time span', value: '10:04 PM to 10:23 PM' },
     ],
     recommendedChecks: [
       { id: 'task-3001-1', title: 'Validate the Snowflake export query and row count', owner: 'Priya Sharma', completed: false },
@@ -245,11 +240,6 @@ function case3002Fixture(item: WorkItem): InvestigationFixture {
     quickFacts: buildQuickFacts(item),
     scopeSummary: [
       { label: 'Systems involved', value: String(item.affected_systems.length) },
-      { label: 'Resources involved', value: 'AWS S3 bucket, SharePoint repository' },
-      { label: 'Actors involved', value: 'svc-backup-export, document owner OAuth app' },
-      { label: 'Alert count', value: String(item.alert_count ?? 0) },
-      { label: 'Entity count', value: '4' },
-      { label: 'Time span', value: '09:53 AM to 10:09 AM' },
     ],
     recommendedChecks: [
       { id: 'task-3002-1', title: 'Validate whether the S3 object or bucket remains publicly reachable', owner: 'Arjun Rao', completed: false },
@@ -313,11 +303,6 @@ function genericFixture(item: WorkItem): InvestigationFixture {
     quickFacts: buildQuickFacts(item),
     scopeSummary: [
       { label: 'Systems involved', value: String(item.affected_systems.length) },
-      { label: 'Resources involved', value: item.key_resource },
-      { label: 'Actors involved', value: actor },
-      { label: 'Alert count', value: String(item.alert_count ?? (item.item_type === 'case' ? item.preview.alerts?.length ?? 0 : 1)) },
-      { label: 'Entity count', value: String(item.preview.actors_entities.length + item.preview.affected_systems_resources.length) },
-      { label: 'Time span', value: `${item.detection_time} to ${item.last_activity}` },
     ],
     recommendedChecks: playbook.recommendedChecks.slice(0, 4).map((entry, index) => ({
       id: `${item.id}-task-${index + 1}`,
@@ -356,16 +341,22 @@ function genericFixture(item: WorkItem): InvestigationFixture {
 }
 
 function buildQuickFacts(item: WorkItem) {
+  const resources = item.preview.affected_systems_resources?.length
+    ? item.preview.affected_systems_resources
+    : [item.key_resource];
+  const entities = item.preview.actors_entities?.length
+    ? item.preview.actors_entities
+    : [item.primary_actor === 'Multiple related entities' ? item.actor_entity_type : item.primary_actor].filter(Boolean);
+
   return [
-    { label: 'Affected systems', value: item.affected_systems.join(', ') },
+    { label: `Affected systems (${item.affected_systems.length})`, value: item.affected_systems },
+    { label: `Resources involved (${resources.length})`, value: resources },
+    { label: `Entities involved (${entities.length})`, value: entities },
     { label: 'Primary actor', value: item.primary_actor === 'Multiple related entities' ? item.preview.actors_entities[0] ?? item.primary_actor : item.primary_actor },
     { label: 'Data sensitivity', value: item.data_sensitivity },
     { label: 'Data volume', value: item.affected_data_volume ?? item.preview.affected_data },
-    { label: 'Last activity', value: item.last_activity },
     ...(item.destination_exposure_target && item.destination_exposure_target !== 'Not applicable' ? [{ label: 'Exposure target', value: item.destination_exposure_target }] : []),
     { label: 'Resource criticality', value: item.resource_criticality },
-    { label: 'Alert count', value: String(item.alert_count ?? item.preview.alerts?.length ?? 1) },
-    { label: 'Current containment', value: item.containment },
   ];
 }
 

@@ -2,6 +2,7 @@ import { ComboBox, Modal, TextInput } from '@carbon/react';
 
 interface InvestigationTaskModalProps {
   open: boolean;
+  mode?: 'add' | 'assign';
   title: string;
   owner: string;
   owners: string[];
@@ -13,6 +14,7 @@ interface InvestigationTaskModalProps {
 
 export function InvestigationTaskModal({
   open,
+  mode = 'add',
   title,
   owner,
   owners,
@@ -21,25 +23,36 @@ export function InvestigationTaskModal({
   onClose,
   onSubmit,
 }: InvestigationTaskModalProps) {
+  const isAssignMode = mode === 'assign';
+
   return (
     <Modal
       open={open}
       className="cg-investigation-submodal"
-      modalHeading="Add investigation task"
-      primaryButtonText="Add task"
+      modalHeading={isAssignMode ? 'Assign investigation task' : 'Add investigation task'}
+      primaryButtonText={isAssignMode ? 'Save owner' : 'Add task'}
       secondaryButtonText="Cancel"
-      primaryButtonDisabled={!title.trim() || !owner.trim()}
+      primaryButtonDisabled={isAssignMode ? !owner.trim() : !title.trim() || !owner.trim()}
       onRequestClose={onClose}
       onRequestSubmit={onSubmit}
     >
       <div className="cg-dialog-stack">
-        <TextInput
-          id="investigation-task-title"
-          labelText="Task"
-          placeholder="Describe the next investigation check"
-          value={title}
-          onChange={(event) => onTitleChange(event.currentTarget.value)}
-        />
+        {isAssignMode ? (
+          <TextInput
+            id="investigation-task-title-readonly"
+            labelText="Task"
+            value={title}
+            readOnly
+          />
+        ) : (
+          <TextInput
+            id="investigation-task-title"
+            labelText="Task"
+            placeholder="Describe the next investigation check"
+            value={title}
+            onChange={(event) => onTitleChange(event.currentTarget.value)}
+          />
+        )}
         <ComboBox
           id="investigation-task-owner"
           titleText="Owner"

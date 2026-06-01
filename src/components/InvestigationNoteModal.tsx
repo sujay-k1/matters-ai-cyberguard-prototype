@@ -4,6 +4,9 @@ interface InvestigationNoteModalProps {
   open: boolean;
   value: string;
   title?: string;
+  primaryButtonText?: string;
+  labelText?: string;
+  placeholder?: string;
   onChange: (value: string) => void;
   onClose: () => void;
   onSubmit: () => void;
@@ -13,6 +16,9 @@ export function InvestigationNoteModal({
   open,
   value,
   title = 'Add note',
+  primaryButtonText = 'Save note',
+  labelText = 'Note',
+  placeholder = 'Capture analyst context, evidence decisions, or handoff details',
   onChange,
   onClose,
   onSubmit,
@@ -22,7 +28,7 @@ export function InvestigationNoteModal({
       open={open}
       className="cg-investigation-submodal"
       modalHeading={title}
-      primaryButtonText="Save note"
+      primaryButtonText={primaryButtonText}
       secondaryButtonText="Cancel"
       primaryButtonDisabled={!value.trim()}
       onRequestClose={onClose}
@@ -30,8 +36,8 @@ export function InvestigationNoteModal({
     >
       <TextArea
         id="investigation-note"
-        labelText="Note"
-        placeholder="Capture analyst context, evidence decisions, or handoff details"
+        labelText={labelText}
+        placeholder={placeholder}
         rows={5}
         value={value}
         onChange={(event) => onChange(event.currentTarget.value)}
