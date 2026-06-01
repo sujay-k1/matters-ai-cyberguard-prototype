@@ -13,6 +13,7 @@ import { AppHeader } from './components/AppHeader';
 import { BulkActionBar } from './components/BulkActionBar';
 import { ColumnCustomizer } from './components/ColumnCustomizer';
 import { FilterPanel } from './components/FilterPanel';
+import { InvestigationWorkspaceModal } from './components/InvestigationWorkspaceModal';
 import { MergeReviewModal } from './components/MergeReviewModal';
 import { PreviewDrawer } from './components/PreviewDrawer';
 import { QueuePagination } from './components/QueuePagination';
@@ -21,6 +22,7 @@ import { ShortcutGuideModal } from './components/ShortcutGuideModal';
 import { WorkQueueHeader } from './components/WorkQueueHeader';
 import { WorkQueueTable } from './components/WorkQueueTable';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
+import type { InvestigationTabId } from './types/investigation';
 import type {
   ColumnDefinition,
   FilterDefinition,
@@ -118,6 +120,8 @@ function App() {
   const [statusModalOpen, setStatusModalOpen] = useState(false);
   const [addTagModalOpen, setAddTagModalOpen] = useState(false);
   const [investigationInfoOpen, setInvestigationInfoOpen] = useState(false);
+  const [investigationItemId, setInvestigationItemId] = useState<string | null>(null);
+  const [activeInvestigationTab, setActiveInvestigationTab] = useState<InvestigationTabId>('summary');
   const [drawerAssignOpen, setDrawerAssignOpen] = useState(false);
   const [drawerStatusOpen, setDrawerStatusOpen] = useState(false);
   const [severityModalOpen, setSeverityModalOpen] = useState(false);
@@ -194,6 +198,10 @@ function App() {
   );
 
   const previewItem = items.find((item) => item.id === previewItemId) ?? null;
+  const investigationItem =
+    items.find((item) => item.id === investigationItemId) ??
+    previewItem ??
+    null;
   const selectedItems = items.filter((item) => selectedIds.includes(item.id));
   const selectedCases = selectedItems.filter((item) => item.item_type === 'case');
 
@@ -225,6 +233,48 @@ function App() {
       setColumnsOpen(true);
     } else if (state === 'shortcut-guide') {
       setShortcutGuideOpen(true);
+    } else if (state === 'investigation') {
+      const heroCase = items.find((item) => item.id === 'CASE-3001') ?? items.find((item) => item.item_type === 'case') ?? items[0];
+      setPreviewItemId(heroCase?.id ?? null);
+      setInvestigationItemId(heroCase?.id ?? null);
+      setActiveInvestigationTab('summary');
+      setInvestigationInfoOpen(true);
+    } else if (state === 'investigation-timeline') {
+      const heroCase = items.find((item) => item.id === 'CASE-3001') ?? items.find((item) => item.item_type === 'case') ?? items[0];
+      setPreviewItemId(heroCase?.id ?? null);
+      setInvestigationItemId(heroCase?.id ?? null);
+      setActiveInvestigationTab('timeline');
+      setInvestigationInfoOpen(true);
+    } else if (state === 'investigation-evidence') {
+      const heroCase = items.find((item) => item.id === 'CASE-3001') ?? items.find((item) => item.item_type === 'case') ?? items[0];
+      setPreviewItemId(heroCase?.id ?? null);
+      setInvestigationItemId(heroCase?.id ?? null);
+      setActiveInvestigationTab('evidence');
+      setInvestigationInfoOpen(true);
+    } else if (state === 'investigation-entities') {
+      const heroCase = items.find((item) => item.id === 'CASE-3001') ?? items.find((item) => item.item_type === 'case') ?? items[0];
+      setPreviewItemId(heroCase?.id ?? null);
+      setInvestigationItemId(heroCase?.id ?? null);
+      setActiveInvestigationTab('entities');
+      setInvestigationInfoOpen(true);
+    } else if (state === 'investigation-actions') {
+      const heroCase = items.find((item) => item.id === 'CASE-3001') ?? items.find((item) => item.item_type === 'case') ?? items[0];
+      setPreviewItemId(heroCase?.id ?? null);
+      setInvestigationItemId(heroCase?.id ?? null);
+      setActiveInvestigationTab('actions');
+      setInvestigationInfoOpen(true);
+    } else if (state === 'investigation-activity') {
+      const heroCase = items.find((item) => item.id === 'CASE-3001') ?? items.find((item) => item.item_type === 'case') ?? items[0];
+      setPreviewItemId(heroCase?.id ?? null);
+      setInvestigationItemId(heroCase?.id ?? null);
+      setActiveInvestigationTab('activity');
+      setInvestigationInfoOpen(true);
+    } else if (state === 'investigation-cloud-exposure') {
+      const cloudCase = items.find((item) => item.id === 'CASE-3002') ?? items.find((item) => item.item_type === 'case') ?? items[0];
+      setPreviewItemId(cloudCase?.id ?? null);
+      setInvestigationItemId(cloudCase?.id ?? null);
+      setActiveInvestigationTab('summary');
+      setInvestigationInfoOpen(true);
     }
   }, [items]);
 
@@ -379,6 +429,13 @@ function App() {
 
   const notifyPlaceholderAction = (title: string, subtitle: string) => {
     addToast('info', title, subtitle);
+  };
+
+  const openInvestigationWorkspace = (itemId: string, tab: InvestigationTabId = 'summary') => {
+    setPreviewItemId(itemId);
+    setInvestigationItemId(itemId);
+    setActiveInvestigationTab(tab);
+    setInvestigationInfoOpen(true);
   };
 
   const handleToggleFilterValue = (filterId: string, value: string) => {
@@ -576,6 +633,7 @@ function App() {
       const activeElement = document.activeElement as HTMLElement | null;
       const isQueueSearchActive = Boolean(activeElement?.closest('.cg-toolbar .cds--search'));
       const isFilterSearchActive = Boolean(activeElement?.closest('.cg-filter-panel__header .cds--search'));
+      const nestedInvestigationModalOpen = Boolean(document.querySelector('.cg-investigation-submodal'));
       if (columnsOpen) setColumnsOpen(false);
       else if (mergeOpen) setMergeOpen(false);
       else if (assignModalOpen) setAssignModalOpen(false);
@@ -585,6 +643,7 @@ function App() {
       else if (drawerStatusOpen) setDrawerStatusOpen(false);
       else if (severityModalOpen) setSeverityModalOpen(false);
       else if (reopenModalOpen) setReopenModalOpen(false);
+      else if (nestedInvestigationModalOpen) return;
       else if (investigationInfoOpen) setInvestigationInfoOpen(false);
       else if (shortcutGuideOpen) setShortcutGuideOpen(false);
       else if (isQueueSearchActive) {
@@ -795,7 +854,7 @@ function App() {
                   onAssignToMe={handleAssignToMe}
                   onReassign={openDrawerAssign}
                   onChangeStatus={openDrawerStatus}
-                  onOpenInvestigation={() => setInvestigationInfoOpen(true)}
+                  onOpenInvestigation={() => openInvestigationWorkspace(previewItem.id)}
                   onChangeSeverity={openSeverityOverride}
                   onAddComment={() =>
                     notifyPlaceholderAction('Comment capture', 'Comment workflows will be added in the next phase.')
@@ -973,14 +1032,50 @@ function App() {
         </div>
       </Modal>
 
-      <Modal
-        open={investigationInfoOpen}
-        modalHeading="Investigation workflow"
-        passiveModal
-        onRequestClose={() => setInvestigationInfoOpen(false)}
-      >
-        Investigation workflow will be designed in the next phase.
-      </Modal>
+      {investigationInfoOpen && investigationItem ? (
+        <InvestigationWorkspaceModal
+          open={investigationInfoOpen}
+          item={investigationItem}
+          activeTab={activeInvestigationTab}
+          currentAnalyst={CURRENT_ANALYST}
+          onClose={() => setInvestigationInfoOpen(false)}
+          onTabChange={setActiveInvestigationTab}
+          onAssignToMe={() => {
+            const target = items.find((entry) => entry.id === investigationItem.id);
+            if (!target) return;
+            setPreviewItemId(target.id);
+            setInvestigationItemId(target.id);
+            updateItem(target.id, (entry) => ({
+              ...entry,
+              assignee: CURRENT_ANALYST,
+              preview: {
+                ...entry.preview,
+                identity_and_urgency: {
+                  ...entry.preview.identity_and_urgency,
+                  assignee: CURRENT_ANALYST,
+                },
+              },
+              localHistory: [...(entry.localHistory ?? []), `Assigned to ${CURRENT_ANALYST}`],
+            }));
+            addToast('success', 'Assigned to you', `${target.id} is now assigned to ${CURRENT_ANALYST}.`);
+          }}
+          onReassign={() => {
+            setPreviewItemId(investigationItem.id);
+            setPendingAssignee(investigationItem.assignee);
+            setDrawerAssignOpen(true);
+          }}
+          onChangeStatus={() => {
+            setPreviewItemId(investigationItem.id);
+            setPendingStatus(normalizeWorkflowStatus(investigationItem.status));
+            setDrawerStatusOpen(true);
+          }}
+          onChangeSeverity={() => {
+            setPreviewItemId(investigationItem.id);
+            openSeverityOverride();
+          }}
+          onToast={addToast}
+        />
+      ) : null}
 
       <div className="cg-toast-stack">
         {toasts.map((toast) => (

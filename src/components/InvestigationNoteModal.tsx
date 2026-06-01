@@ -1,0 +1,41 @@
+import { Modal, TextArea } from '@carbon/react';
+
+interface InvestigationNoteModalProps {
+  open: boolean;
+  value: string;
+  title?: string;
+  onChange: (value: string) => void;
+  onClose: () => void;
+  onSubmit: () => void;
+}
+
+export function InvestigationNoteModal({
+  open,
+  value,
+  title = 'Add note',
+  onChange,
+  onClose,
+  onSubmit,
+}: InvestigationNoteModalProps) {
+  return (
+    <Modal
+      open={open}
+      className="cg-investigation-submodal"
+      modalHeading={title}
+      primaryButtonText="Save note"
+      secondaryButtonText="Cancel"
+      primaryButtonDisabled={!value.trim()}
+      onRequestClose={onClose}
+      onRequestSubmit={onSubmit}
+    >
+      <TextArea
+        id="investigation-note"
+        labelText="Note"
+        placeholder="Capture analyst context, evidence decisions, or handoff details"
+        rows={5}
+        value={value}
+        onChange={(event) => onChange(event.currentTarget.value)}
+      />
+    </Modal>
+  );
+}

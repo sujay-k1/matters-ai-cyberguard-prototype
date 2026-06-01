@@ -25,9 +25,11 @@ npm run build
 - Carbon-style global header with Overview, Work Queue, and Activity Log tabs
 - Desktop Work Queue with direct filter families, nested filter flyouts, queue search, sorting, pagination, and sticky pinned columns
 - Right-side triage-first preview drawer for alerts and cases with sticky decision header, inline assignee/status actions, recommended next step, quick facts, and progressive disclosure accordions
+- Carbon `ComposedModal` investigation workspace with Summary, Timeline, Alerts & Evidence, Entities & Assets, Actions, and Activity tabs
 - Bulk selection, assignment, status change, tagging, and case consolidation review flow
 - Column customization with visibility toggles and drag-reordering
 - Keyboard shortcuts and query-string review presets
+- Local-only investigation interactions including tasks, notes, hypothesis editing, evidence relevance, entity detail panels, and simulated response planning
 
 ## Shortcuts
 
@@ -44,6 +46,13 @@ npm run build
 - `/?state=default`
 - `/?state=preview`
 - `/?state=alert-preview`
+- `/?state=investigation`
+- `/?state=investigation-timeline`
+- `/?state=investigation-evidence`
+- `/?state=investigation-entities`
+- `/?state=investigation-actions`
+- `/?state=investigation-activity`
+- `/?state=investigation-cloud-exposure`
 - `/?state=filter-open`
 - `/?state=bulk-selected`
 - `/?state=merge-review`
@@ -60,5 +69,6 @@ https://github.com/sujay-k1/matters-ai-cyberguard-prototype
 - Local UI state resets on refresh
 - Overview is intentionally lightweight
 - Activity Log is intentionally lightweight
-- Investigation and remediation workflows will be designed next
+- Response execution is simulated locally and does not trigger real external actions
+- Full remediation workflows will be designed next
 - Stitch references were used read-only and did not include dedicated filter-open or bulk-selection screens

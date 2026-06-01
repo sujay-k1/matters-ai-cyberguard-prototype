@@ -49,6 +49,12 @@ The shortcut model lets reviewers jump quickly between search, filters, the tabl
 
 The right-side overlay drawer preserves list context while giving analysts enough structured detail to assign, escalate, or consolidate items quickly.
 
+## Investigation workflow
+
+Queue → Preview triage → Investigation workspace → Response planning → Resolution
+
+The full investigation workspace extends the preview drawer into a richer overlay without navigating away from the queue, so analysts can validate evidence and plan response actions while keeping the Work Queue context underneath.
+
 ## Pagination rationale
 
 Pagination keeps the table readable while supporting larger fixture sets. Page size changes, filters, search, sorting, and segments all work together and reset to page 1 when the result set changes.
