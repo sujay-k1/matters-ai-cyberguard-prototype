@@ -1,10 +1,14 @@
 import { Accordion, AccordionItem, Button, Dropdown, Search, Tag } from '@carbon/react';
 import { useMemo, useState } from 'react';
 import type { TimelineEvent } from '../types/investigation';
+import { compareTimeRange } from '../hooks/useWorkflowState';
 
 interface InvestigationTimelineProps {
   events: TimelineEvent[];
   onUpdateRelevance: (eventId: string, relevance: TimelineEvent['relevance']) => void;
+  onOpenEvidence: (evidenceId: string) => void;
+  onOpenAlert: (alertId: string) => void;
+  onAttachToggle: (eventId: string) => void;
   onAddNote: () => void;
 }
 
@@ -13,6 +17,9 @@ const activityTypeOptions = ['All activity', 'Identity', 'Snowflake', 'Endpoint'
 export function InvestigationTimeline({
   events,
   onUpdateRelevance,
+  onOpenEvidence,
+  onOpenAlert,
+  onAttachToggle,
   onAddNote,
 }: InvestigationTimelineProps) {
   const [searchValue, setSearchValue] = useState('');
@@ -37,7 +44,7 @@ export function InvestigationTimeline({
         const matchesSystem = systemFilter === 'All systems' || event.systemName === systemFilter;
         const matchesAlert = alertFilter === 'All alerts' || event.relatedAlert === alertFilter;
         const matchesEntity = entityFilter === 'All entities' || event.entity === entityFilter;
-        const matchesTime = timeRangeFilter === 'All times' || true;
+        const matchesTime = compareTimeRange(event, timeRangeFilter);
         return matchesSearch && matchesType && matchesSystem && matchesAlert && matchesEntity && matchesTime;
       }),
     [activityType, alertFilter, entityFilter, events, searchValue, systemFilter, timeRangeFilter],
@@ -128,9 +135,6 @@ export function InvestigationTimeline({
               </AccordionItem>
             </Accordion>
             <div className="cg-investigation-action-row">
-              <Button kind="ghost" size="sm">
-                View raw evidence
-              </Button>
               <Button kind="ghost" size="sm" onClick={() => onUpdateRelevance(event.id, 'Relevant')}>
                 Mark relevant
               </Button>
@@ -140,8 +144,26 @@ export function InvestigationTimeline({
               <Button kind="ghost" size="sm" onClick={onAddNote}>
                 Add note
               </Button>
-              <Button kind="ghost" size="sm">
+              <Button
+                kind="ghost"
+                size="sm"
+                onClick={() => onAttachToggle(event.id)}
+              >
+                {event.attached === false ? 'Attach to case' : 'Detach from case'}
+              </Button>
+              <Button
+                kind="ghost"
+                size="sm"
+                onClick={() => onOpenAlert(event.relatedAlert)}
+              >
                 Open related alert
+              </Button>
+              <Button
+                kind="ghost"
+                size="sm"
+                onClick={() => event.evidenceId && onOpenEvidence(event.evidenceId)}
+              >
+                View raw evidence
               </Button>
             </div>
           </div>

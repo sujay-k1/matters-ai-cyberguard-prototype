@@ -3,26 +3,51 @@ import type { InvestigationResponseAction, ResponseActionState } from '../types/
 
 interface InvestigationActionsProps {
   actions: InvestigationResponseAction[];
-  onUpdateActionState: (actionId: string, next: ResponseActionState, note?: string) => void;
+  containment: string;
+  onOpenAction: (actionId: string) => void;
+  onPrimaryAction: (action: InvestigationResponseAction) => void;
+  onSecondaryAction: (action: InvestigationResponseAction) => void;
   onAddNote: () => void;
 }
 
 const ACTION_STATES: ResponseActionState[] = [
   'Recommended',
   'Pending approval',
+  'Approved',
   'In progress',
   'Completed',
   'Failed',
   'Rejected',
+  'Cancelled',
 ];
 
 export function InvestigationActions({
   actions,
-  onUpdateActionState,
+  containment,
+  onOpenAction,
+  onPrimaryAction,
+  onSecondaryAction,
   onAddNote,
 }: InvestigationActionsProps) {
+  const requiredContainment = actions.filter((action) => action.requiredForContainment);
+  const completed = actions.filter((action) => action.currentState === 'Completed').length;
+  const pendingApproval = actions.filter((action) => action.currentState === 'Pending approval').length;
+  const inProgress = actions.filter((action) => action.currentState === 'In progress').length;
+  const failed = actions.filter((action) => action.currentState === 'Failed').length;
+
   return (
     <div className="cg-investigation-tab-stack">
+      <section className="cg-investigation-pane">
+        <div className="cg-investigation-summary-strip">
+          <div><span>Required containment actions</span><strong>{requiredContainment.length}</strong></div>
+          <div><span>Completed</span><strong>{completed}</strong></div>
+          <div><span>Pending approval</span><strong>{pendingApproval}</strong></div>
+          <div><span>In progress</span><strong>{inProgress}</strong></div>
+          <div><span>Failed</span><strong>{failed}</strong></div>
+          <div><span>Derived containment</span><strong>{containment}</strong></div>
+        </div>
+      </section>
+
       {ACTION_STATES.map((state) => {
         const grouped = actions.filter((action) => action.currentState === state);
         if (!grouped.length) return null;
@@ -57,7 +82,9 @@ export function InvestigationActions({
                       <dd>{action.reversibility}</dd>
                     </div>
                   </div>
-                  <p>{action.reason}</p>
+                  <div className="cg-investigation-ai-insight">
+                    <p>{action.reason}</p>
+                  </div>
                   <p>
                     <strong>Expected effect:</strong> {action.expectedEffect}
                   </p>
@@ -65,17 +92,14 @@ export function InvestigationActions({
                     <strong>Potential business impact:</strong> {action.businessImpact}
                   </p>
                   <div className="cg-investigation-action-row">
-                    <Button kind="ghost" size="sm" onClick={() => onUpdateActionState(action.id, 'Pending approval')}>
-                      Request approval
+                    <Button kind="ghost" size="sm" onClick={() => onOpenAction(action.id)}>
+                      View details
                     </Button>
-                    <Button kind="ghost" size="sm" onClick={() => onUpdateActionState(action.id, 'In progress')}>
-                      Mark in progress
+                    <Button kind="ghost" size="sm" onClick={() => onSecondaryAction(action)}>
+                      {secondaryActionLabel(action)}
                     </Button>
-                    <Button kind="ghost" size="sm" onClick={() => onUpdateActionState(action.id, 'Completed')}>
-                      Mark completed
-                    </Button>
-                    <Button kind="ghost" size="sm" onClick={() => onUpdateActionState(action.id, 'Rejected', 'Rejected in prototype review')}>
-                      Reject
+                    <Button kind="secondary" size="sm" onClick={() => onPrimaryAction(action)}>
+                      {primaryActionLabel(action)}
                     </Button>
                     <Button kind="ghost" size="sm" onClick={onAddNote}>
                       Add note
@@ -91,9 +115,32 @@ export function InvestigationActions({
   );
 }
 
+function primaryActionLabel(action: InvestigationResponseAction) {
+  if (action.currentState === 'Recommended') {
+    return action.requiresApproval ? 'Request approval' : 'Start action';
+  }
+  if (action.currentState === 'Pending approval') return 'Approve';
+  if (action.currentState === 'Approved') return 'Start action';
+  if (action.currentState === 'In progress') return 'Mark completed';
+  if (action.currentState === 'Failed') return 'Retry';
+  if (action.currentState === 'Rejected') return 'Request again';
+  return 'View details';
+}
+
+function secondaryActionLabel(action: InvestigationResponseAction) {
+  if (action.currentState === 'Pending approval') return 'Reject';
+  if (action.currentState === 'In progress') return 'Mark failed';
+  if (action.currentState === 'Failed') return 'Escalate';
+  if (action.currentState === 'Recommended' || action.currentState === 'Rejected' || action.currentState === 'Approved') {
+    return 'Cancel action';
+  }
+  return 'Close';
+}
+
 function actionStateTagType(state: ResponseActionState) {
   if (state === 'Completed') return 'green';
-  if (state === 'Failed' || state === 'Rejected') return 'red';
+  if (state === 'Failed' || state === 'Rejected' || state === 'Cancelled') return 'red';
   if (state === 'In progress') return 'blue';
+  if (state === 'Approved') return 'teal';
   return 'cool-gray';
 }

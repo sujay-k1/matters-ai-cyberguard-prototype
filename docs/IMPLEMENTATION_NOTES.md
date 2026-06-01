@@ -50,6 +50,19 @@
 - Refactored the preview drawer around existing `WorkItem` and `preview` payload fields instead of introducing a second data model
 - Implemented lightweight HTTP-level dev-server verification when full browser automation was unavailable
 
+## Shared workflow state
+
+- Added a lightweight local workflow-state hook instead of introducing Redux, Zustand, MobX, or another dependency
+- Investigation workspace state is now keyed by item ID and survives modal close / reopen during the current browser session
+- Shared workflow state also drives:
+  - derived containment
+  - classification
+  - resolution history
+  - escalations
+  - hunt-result attachment
+  - module-level Activity Log aggregation
+  - Overview metrics
+
 ## Preview drawer refinements
 
 - Redesigned the preview drawer as a triage-first panel with a sticky decision header, an above-the-fold brief, and expandable supporting context
@@ -73,6 +86,34 @@
 - Implemented local-only investigation interactions for tasks, notes, hypothesis editing, timeline relevance, evidence relevance, entity panels, and response-action state changes
 - Deferred the real remediation workflow and all external integrations while keeping response planning visible in the Actions tab
 
+## Response and resolution workflow
+
+- Response actions now follow a guarded local state machine rather than exposing every state transition at once
+- Containment is derived from action progress and is not manually editable
+- Workflow status remains separate from containment and can still be manually overridden by the analyst
+- Added:
+  - approval request
+  - approval
+  - rejection with mandatory comment
+  - failure with mandatory reason
+  - retry
+  - cancellation
+  - escalation / handoff
+- Added classification and resolution flows with local guardrails
+- Resolve-with-exception requires a mandatory comment when open warnings remain
+- Child-alert handling supports default resolution or selective detach-keep-open behavior
+- Previous resolution state is preserved when a resolved item is reopened
+
+## Activity and overview
+
+- Added a module-level Activity Log that aggregates queue updates, investigation events, remediation progress, containment changes, classifications, resolutions, reopenings, and handoffs
+- Added an analyst-operational Overview surface with immediate-attention metrics, workflow load, risk-pattern rollups, and Work Queue click-through actions
+
+## Lightweight hunting and detail depth
+
+- Added a deterministic lightweight hunt-results flow instead of a full hunt engine
+- Added raw-evidence view, alert detail, richer evidence detail, and deeper entity-detail sections without introducing new full-screen routes
+
 ## Known limitations
 
 - Query-string presets initialize core states, but deeper visual QA still benefits from manual browser review
@@ -81,6 +122,9 @@
 - No automated screenshot capture was produced in this environment
 - The investigation workspace uses static hero fixtures plus deterministic fallback generation rather than real cross-system evidence retrieval
 - Nested investigation note and task workflows are local-only and reset on refresh
+- Activity Log and Overview are local aggregations rather than backend-backed operational telemetry
+- Child-alert detach and move-to-case flows remain intentionally lightweight and deterministic
+- Remediation execution, approvals, escalations, and source-system links are simulated
 
 ## Suggested next steps
 

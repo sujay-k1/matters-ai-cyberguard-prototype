@@ -14,6 +14,8 @@ interface InvestigationHeaderProps {
   onAddNote: () => void;
   onGoToActions: () => void;
   onGoToActivity: () => void;
+  onClassifyItem: () => void;
+  onResolveItem: () => void;
 }
 
 export function InvestigationHeader({
@@ -27,6 +29,8 @@ export function InvestigationHeader({
   onAddNote,
   onGoToActions,
   onGoToActivity,
+  onClassifyItem,
+  onResolveItem,
 }: InvestigationHeaderProps) {
   const severity = item.analystSeverityOverride?.severity ?? item.severity;
   const showAssignToMe = item.assignee !== currentAnalyst;
@@ -94,6 +98,12 @@ export function InvestigationHeader({
                 </button>
                 <button type="button" role="menuitem" onClick={() => { setMoreOpen(false); onAddNote(); }}>
                   Add comment
+                </button>
+                <button type="button" role="menuitem" onClick={() => { setMoreOpen(false); onClassifyItem(); }}>
+                  Classify item
+                </button>
+                <button type="button" role="menuitem" onClick={() => { setMoreOpen(false); onResolveItem(); }}>
+                  {item.item_type === 'case' ? 'Resolve case' : 'Resolve alert'}
                 </button>
                 <button type="button" role="menuitem" onClick={() => { setMoreOpen(false); onGoToActivity(); }}>
                   View activity

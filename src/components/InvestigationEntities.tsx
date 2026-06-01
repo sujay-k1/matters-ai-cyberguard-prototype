@@ -5,12 +5,14 @@ import type { InvestigationEntity } from '../types/investigation';
 interface InvestigationEntitiesProps {
   entities: InvestigationEntity[];
   onOpenEntity: (id: string) => void;
+  onGoHunt: () => void;
   onAddNote: () => void;
 }
 
 export function InvestigationEntities({
   entities,
   onOpenEntity,
+  onGoHunt,
   onAddNote,
 }: InvestigationEntitiesProps) {
   const [viewMode, setViewMode] = useState<'list' | 'relationship'>('list');
@@ -32,7 +34,6 @@ export function InvestigationEntities({
 
         {viewMode === 'relationship' ? (
           <>
-            <p className="cg-summary-line">Relationship view is summarized in this prototype to keep the workspace reliable and focused on investigation flow.</p>
             <div className="cg-investigation-relationship-summary">
               {entities.map((entity) => (
                 <div key={entity.id} className="cg-investigation-chip-row">
@@ -71,7 +72,9 @@ export function InvestigationEntities({
                     <dd>{entity.lastActivity}</dd>
                   </div>
                 </div>
-                <p>{entity.profileSummary}</p>
+                <div className="cg-investigation-ai-insight">
+                  <p>{entity.profileSummary}</p>
+                </div>
                 <div className="cg-investigation-action-row">
                   <Button kind="ghost" size="sm" onClick={() => onOpenEntity(entity.id)}>
                     Open entity details
@@ -79,7 +82,7 @@ export function InvestigationEntities({
                   <Button kind="ghost" size="sm">
                     Compare with baseline
                   </Button>
-                  <Button kind="ghost" size="sm">
+                  <Button kind="ghost" size="sm" onClick={onGoHunt}>
                     Go hunt
                   </Button>
                   <Button kind="ghost" size="sm" onClick={onAddNote}>

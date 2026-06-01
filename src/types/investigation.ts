@@ -9,13 +9,23 @@ export type InvestigationTabId =
   | 'activity';
 
 export type InvestigationRelevance = 'Relevant' | 'Irrelevant' | 'Needs review';
+export type WorkItemClassification =
+  | 'True positive — malicious activity'
+  | 'True positive — policy violation'
+  | 'Expected business activity'
+  | 'False positive'
+  | 'Duplicate'
+  | 'Accepted risk'
+  | 'Needs monitoring';
 export type ResponseActionState =
   | 'Recommended'
   | 'Pending approval'
+  | 'Approved'
   | 'In progress'
   | 'Completed'
   | 'Failed'
-  | 'Rejected';
+  | 'Rejected'
+  | 'Cancelled';
 
 export interface InvestigationTask {
   id: string;
@@ -33,6 +43,7 @@ export interface InvestigationNote {
 
 export interface TimelineEvent {
   id: string;
+  occurredAt: string;
   timestamp: string;
   category: string;
   systemName: string;
@@ -42,6 +53,8 @@ export interface TimelineEvent {
   entity: string;
   relevance: InvestigationRelevance;
   details: string[];
+  evidenceId?: string;
+  attached?: boolean;
 }
 
 export interface EvidenceItem {
@@ -99,6 +112,21 @@ export interface InvestigationResponseAction {
   currentState: ResponseActionState;
   createdBy: 'AI' | 'Analyst' | 'System';
   auditTimestamp: string;
+  requiresApproval: boolean;
+  approverRole?: string;
+  approver?: string;
+  approvalRequestedBy?: string;
+  approvalRequestedAt?: string;
+  approvedBy?: string;
+  approvedAt?: string;
+  rejectedBy?: string;
+  rejectedAt?: string;
+  failureReason?: string;
+  retryCount?: number;
+  requiredForContainment: boolean;
+  containmentCategory?: string;
+  dependencies?: string[];
+  history?: InvestigationActivityItem[];
   note?: string;
 }
 
@@ -112,6 +140,42 @@ export interface InvestigationActivityItem {
   previousValue?: string;
   newValue?: string;
   comment?: string;
+}
+
+export interface ResolutionRecord {
+  classification: WorkItemClassification;
+  resolutionSummary: string;
+  rootCause: string;
+  remediationSummary: string;
+  residualRisk: string;
+  monitoringRequired: boolean;
+  notificationRecipients: string[];
+  resolvedBy: string;
+  resolvedAt: string;
+  resolvedWithException: boolean;
+  exceptionReason?: string;
+  childAlertHandling: 'resolve-all' | 'detach-selected';
+  detachedAlertIds?: string[];
+}
+
+export interface HuntResult {
+  id: string;
+  type: string;
+  title: string;
+  description: string;
+  sourceSystem: string;
+  entity: string;
+  timestamp: string;
+  attached: boolean;
+}
+
+export interface EscalationRecord {
+  team: string;
+  urgency: string;
+  reason: string;
+  note: string;
+  createdBy: string;
+  createdAt: string;
 }
 
 export interface InvestigationPlaybook {
@@ -153,6 +217,7 @@ export interface InvestigationFixture {
   handoffTeams: string[];
   timeSpan: string;
   entityCount: number;
+  huntResults?: HuntResult[];
 }
 
 export interface InvestigationWorkspaceState {
@@ -165,8 +230,16 @@ export interface InvestigationWorkspaceState {
   entities: InvestigationEntity[];
   actions: InvestigationResponseAction[];
   activity: InvestigationActivityItem[];
+  classification?: WorkItemClassification;
+  resolution?: ResolutionRecord;
+  lastResolution?: ResolutionRecord;
+  escalations: EscalationRecord[];
+  huntResults: HuntResult[];
   selectedEvidenceId: string | null;
   selectedEntityId: string | null;
+  selectedAlertId: string | null;
+  selectedActionId: string | null;
+  selectedTimelineEventId: string | null;
 }
 
 export interface InvestigationContext {
@@ -174,4 +247,15 @@ export interface InvestigationContext {
   fixture: InvestigationFixture;
   playbook: InvestigationPlaybook;
   evidenceModules: SystemEvidenceModule[];
+}
+
+export interface WorkflowActivityEvent extends InvestigationActivityItem {
+  itemId: string;
+  itemTitle: string;
+  itemType: WorkItem['item_type'];
+  affectedEntity?: string;
+  result?: string;
+  system?: string;
+  riskType?: string;
+  linkedActionId?: string;
 }

@@ -89,6 +89,10 @@ export interface WorkItem {
     comment: string;
     previousSeverity: string;
   };
+  classification?: import('./investigation').WorkItemClassification;
+  resolution?: import('./investigation').ResolutionRecord;
+  lastResolution?: import('./investigation').ResolutionRecord;
+  reopenedCount?: number;
   reopenComment?: string;
   localHistory?: string[];
 }

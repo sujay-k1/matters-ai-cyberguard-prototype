@@ -55,6 +55,19 @@ Queue → Preview triage → Investigation workspace → Response planning → R
 
 The full investigation workspace extends the preview drawer into a richer overlay without navigating away from the queue, so analysts can validate evidence and plan response actions while keeping the Work Queue context underneath.
 
+## End-to-end analyst journey
+
+Events / evidence
+→ Alerts
+→ Optional cases
+→ Preview triage
+→ Investigation
+→ Response actions
+→ Containment
+→ Classification
+→ Resolution
+→ Reopening when required
+
 ## Pagination rationale
 
 Pagination keeps the table readable while supporting larger fixture sets. Page size changes, filters, search, sorting, and segments all work together and reset to page 1 when the result set changes.

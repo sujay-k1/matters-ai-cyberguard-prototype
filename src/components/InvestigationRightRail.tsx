@@ -5,12 +5,14 @@ interface InvestigationRightRailProps {
   context: InvestigationContext;
   hypothesis: string;
   onOpenHypothesisModal: () => void;
+  onEscalate: () => void;
 }
 
 export function InvestigationRightRail({
   context,
   hypothesis,
   onOpenHypothesisModal,
+  onEscalate,
 }: InvestigationRightRailProps) {
   return (
     <aside className="cg-investigation-rail">
@@ -30,7 +32,7 @@ export function InvestigationRightRail({
             <dd>
               <div className="cg-investigation-guide-hypothesis">
                 <span>{hypothesis}</span>
-                <Button kind="secondary" size="sm" onClick={onOpenHypothesisModal}>
+                <Button kind="tertiary" size="sm" onClick={onOpenHypothesisModal}>
                   Update hypothesis
                 </Button>
               </div>
@@ -54,7 +56,7 @@ export function InvestigationRightRail({
       <section className="cg-investigation-pane">
         <div className="cg-investigation-pane__header">
           <h3>Case handoff</h3>
-          <Button kind="ghost" size="sm">
+          <Button kind="ghost" size="sm" onClick={onEscalate}>
             Escalate
           </Button>
         </div>

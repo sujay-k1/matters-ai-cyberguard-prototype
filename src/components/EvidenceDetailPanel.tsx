@@ -1,10 +1,13 @@
 import { Button, Tag } from '@carbon/react';
+import { useState } from 'react';
 import type { EvidenceItem } from '../types/investigation';
 
 interface EvidenceDetailPanelProps {
   evidence: EvidenceItem | null;
   onClose: () => void;
   onToggleVerdict: (next: EvidenceItem['verdict']) => void;
+  onToggleAttached: () => void;
+  onGoHunt: () => void;
   onAddNote: () => void;
 }
 
@@ -12,8 +15,11 @@ export function EvidenceDetailPanel({
   evidence,
   onClose,
   onToggleVerdict,
+  onToggleAttached,
+  onGoHunt,
   onAddNote,
 }: EvidenceDetailPanelProps) {
+  const [showRaw, setShowRaw] = useState(false);
   if (!evidence) return null;
 
   return (
@@ -69,6 +75,29 @@ export function EvidenceDetailPanel({
             ))}
           </ul>
         </section>
+        {evidence.rawRecordAvailable ? (
+          <section>
+            <h4>Raw event</h4>
+            <Button kind="ghost" size="sm" onClick={() => setShowRaw((current) => !current)}>
+              {showRaw ? 'Hide raw JSON' : 'Show raw JSON'}
+            </Button>
+            {showRaw ? (
+              <pre className="cg-raw-json">
+{JSON.stringify(
+  {
+    id: evidence.id,
+    eventType: evidence.eventType,
+    sourceSystem: evidence.sourceSystem,
+    entity: evidence.entity,
+    description: evidence.description,
+  },
+  null,
+  2,
+)}
+              </pre>
+            ) : null}
+          </section>
+        ) : null}
       </div>
       <div className="cg-investigation-detail-panel__footer">
         <Button kind="ghost" size="sm" onClick={() => onToggleVerdict('Relevant')}>
@@ -76,6 +105,12 @@ export function EvidenceDetailPanel({
         </Button>
         <Button kind="ghost" size="sm" onClick={() => onToggleVerdict('Irrelevant')}>
           Mark irrelevant
+        </Button>
+        <Button kind="ghost" size="sm" onClick={onToggleAttached}>
+          {evidence.attached ? 'Detach from case' : 'Attach to case'}
+        </Button>
+        <Button kind="ghost" size="sm" onClick={onGoHunt}>
+          Go hunt
         </Button>
         <Button kind="secondary" size="sm" onClick={onAddNote}>
           Add note

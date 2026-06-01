@@ -4,10 +4,11 @@ import type { InvestigationEntity } from '../types/investigation';
 interface EntityDetailPanelProps {
   entity: InvestigationEntity | null;
   onClose: () => void;
+  onGoHunt: () => void;
   onAddNote: () => void;
 }
 
-export function EntityDetailPanel({ entity, onClose, onAddNote }: EntityDetailPanelProps) {
+export function EntityDetailPanel({ entity, onClose, onGoHunt, onAddNote }: EntityDetailPanelProps) {
   if (!entity) return null;
 
   return (
@@ -82,6 +83,9 @@ export function EntityDetailPanel({ entity, onClose, onAddNote }: EntityDetailPa
         </Button>
         <Button kind="ghost" size="sm">
           Compare with baseline
+        </Button>
+        <Button kind="ghost" size="sm" onClick={onGoHunt}>
+          Go hunt
         </Button>
         <Button kind="secondary" size="sm" onClick={onAddNote}>
           Add note

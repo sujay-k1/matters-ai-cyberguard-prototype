@@ -135,8 +135,16 @@ export function createWorkspaceStateFromFixture(fixture: InvestigationFixture) {
     })),
     actions: fixture.actions.map((action) => ({ ...action })),
     activity: fixture.activity.map((entry) => ({ ...entry })),
+    classification: undefined,
+    resolution: undefined,
+    lastResolution: undefined,
+    escalations: [],
+    huntResults: fixture.huntResults?.map((result) => ({ ...result })) ?? [],
     selectedEvidenceId: null,
     selectedEntityId: null,
+    selectedAlertId: null,
+    selectedActionId: null,
+    selectedTimelineEventId: null,
   };
 }
 
@@ -203,12 +211,12 @@ function case3001Fixture(item: WorkItem): InvestigationFixture {
       entity('ent-3001-6', 'File', 'customer_billing_export.csv', 'High', 'Export artifact', 2, 3, '4m ago', 'CSV artifact created locally before upload.', 'File naming and destination pattern differ from baseline.', ['Local file write'], ['Browser upload touchpoints'], ['Confirm if file was encrypted or renamed'], ['Quarantine endpoint artifact']),
     ],
     actions: [
-      response('act-3001-1', 'Revoke active sessions for Rohan Mehta', 'Rohan Mehta', 'High-confidence suspicious session activity continues to be in scope.', 'Stops continued interactive access during investigation.', 'May interrupt legitimate work.', 'Reversible', 'Manager or IAM approver', 'Recommended', 'AI', '10:25 PM'),
-      response('act-3001-2', 'Block upload destination', 'drive-upload.personal-cloud.example', 'Large outbound transfer reached an unmanaged destination.', 'Prevents further exfiltration to the observed domain.', 'Could block legitimate access to the same service.', 'Reversible', 'Network owner', 'Pending approval', 'Analyst', '10:27 PM'),
-      response('act-3001-3', 'Temporarily suspend Snowflake export permission', 'Snowflake customer billing database', 'Export role was used for a large unusual query.', 'Limits follow-on export attempts during triage.', 'Could delay reporting workflows.', 'Reversible', 'Data platform owner', 'Recommended', 'AI', '10:28 PM'),
-      response('act-3001-4', 'Isolate managed endpoint DEV-4032', 'Managed MacBook DEV-4032', 'Endpoint staged the exported file before upload.', 'Stops further endpoint-led data movement.', 'Device user loses network access temporarily.', 'Reversible', 'SOC lead', 'In progress', 'System', '10:31 PM'),
-      response('act-3001-5', 'Notify customer-data owner', 'Customer billing data owner', 'Sensitive customer PII may have been exposed externally.', 'Brings the owner into the response flow quickly.', 'Minimal business impact.', 'N/A', 'None', 'Completed', 'Analyst', '10:34 PM'),
-      response('act-3001-6', 'Escalate to incident response', 'Incident-response team', 'Potential ongoing exposure and cross-system evidence chain warrant escalation.', 'Transitions the case into coordinated response.', 'Higher response overhead.', 'N/A', 'Incident commander', 'Recommended', 'AI', '10:35 PM'),
+      response('act-3001-1', 'Revoke active sessions for Rohan Mehta', 'Rohan Mehta', 'High-confidence suspicious session activity continues to be in scope.', 'Stops continued interactive access during investigation.', 'May interrupt legitimate work.', 'Reversible', 'Manager or IAM approver', 'Completed', 'AI', '10:25 PM', { requiresApproval: false, requiredForContainment: true, containmentCategory: 'Identity containment', approvedBy: 'Priya Sharma', approvedAt: '10:25 PM' }),
+      response('act-3001-2', 'Block upload destination', 'drive-upload.personal-cloud.example', 'Large outbound transfer reached an unmanaged destination.', 'Prevents further exfiltration to the observed domain.', 'Could block legitimate access to the same service.', 'Reversible', 'Network owner', 'Completed', 'Analyst', '10:27 PM', { requiresApproval: false, requiredForContainment: true, containmentCategory: 'Network containment' }),
+      response('act-3001-3', 'Temporarily suspend Snowflake export permission', 'Snowflake customer billing database', 'Export role was used for a large unusual query.', 'Limits follow-on export attempts during triage.', 'Could delay reporting workflows.', 'Reversible', 'Data platform owner', 'Pending approval', 'AI', '10:28 PM', { requiresApproval: true, approverRole: 'Data platform owner', requiredForContainment: false, approvalRequestedBy: 'Priya Sharma', approvalRequestedAt: '10:28 PM' }),
+      response('act-3001-4', 'Isolate managed endpoint DEV-4032', 'Managed MacBook DEV-4032', 'Endpoint staged the exported file before upload.', 'Stops further endpoint-led data movement.', 'Device user loses network access temporarily.', 'Reversible', 'SOC lead', 'Failed', 'System', '10:31 PM', { requiresApproval: false, requiredForContainment: true, containmentCategory: 'Endpoint containment', failureReason: 'EDR agent was offline when isolation was attempted.', retryCount: 1 }),
+      response('act-3001-5', 'Notify customer-data owner', 'Customer billing data owner', 'Sensitive customer PII may have been exposed externally.', 'Brings the owner into the response flow quickly.', 'Minimal business impact.', 'N/A', 'None', 'Completed', 'Analyst', '10:34 PM', { requiresApproval: false, requiredForContainment: false }),
+      response('act-3001-6', 'Escalate to incident response', 'Incident-response team', 'Potential ongoing exposure and cross-system evidence chain warrant escalation.', 'Transitions the case into coordinated response.', 'Higher response overhead.', 'N/A', 'Incident commander', 'Recommended', 'AI', '10:35 PM', { requiresApproval: false, requiredForContainment: false }),
     ],
     notes: [
       note('note-3001-1', 'Priya Sharma', '10:26 PM', 'Initial review supports a single exfiltration chain rather than three unrelated alerts.'),
@@ -227,6 +235,11 @@ function case3001Fixture(item: WorkItem): InvestigationFixture {
     handoffTeams: ['Incident-response team', 'Compliance / legal'],
     timeSpan: '19 minutes',
     entityCount: 7,
+    huntResults: [
+      hunt('hunt-3001-1', 'Related sign-in', 'Repeat sign-in from same source IP', 'Second sign-in from the same source IP 14 minutes earlier.', 'Microsoft Entra ID', '185.244.18.77', '09:50 PM'),
+      hunt('hunt-3001-2', 'Outbound transfer', 'Similar outbound transfer from same device', 'A smaller 120 MB transfer to the same destination family occurred the prior evening.', 'Secure web gateway', 'DEV-4032', '09:18 PM'),
+      hunt('hunt-3001-3', 'OAuth activity', 'Related OAuth token refresh', 'Browser token refresh aligned with the upload session.', 'Google Workspace', 'Rohan Mehta', '10:15 PM'),
+    ],
   };
 }
 
@@ -271,8 +284,8 @@ function case3002Fixture(item: WorkItem): InvestigationFixture {
       entity('ent-3002-3', 'Privileged admin', 'svc-backup-export', 'Medium', 'Automation actor', 1, 1, '21m ago', 'Backup/export service account associated with the exposed object path.', 'Access scope seems broader than expected.', ['Export role'], ['Backup job'], ['Review change justification'], ['Tighten service account scope']),
     ],
     actions: [
-      response('act-3002-1', 'Revoke public access', 'AWS S3 bucket', 'Production data remains in a public or broad access state.', 'Closes the direct exposure path.', 'Could disrupt expected download workflows.', 'Reversible', 'Cloud owner', 'Recommended', 'AI', '10:09 AM'),
-      response('act-3002-2', 'Review repository sharing scope', 'SharePoint repository', 'Broad repository sharing may still expose related files.', 'Reduces follow-on exposure through linked repositories.', 'May affect collaboration links.', 'Reversible', 'Content owner', 'Recommended', 'AI', '10:11 AM'),
+      response('act-3002-1', 'Remove public access', 'AWS S3 bucket', 'Production data remains in a public or broad access state.', 'Closes the direct exposure path.', 'Could disrupt expected download workflows.', 'Reversible', 'Cloud owner', 'Completed', 'AI', '10:09 AM', { requiresApproval: false, requiredForContainment: true, containmentCategory: 'Cloud containment' }),
+      response('act-3002-2', 'Review repository sharing scope', 'SharePoint repository', 'Broad repository sharing may still expose related files.', 'Reduces follow-on exposure through linked repositories.', 'May affect collaboration links.', 'Reversible', 'Content owner', 'Approved', 'AI', '10:11 AM', { requiresApproval: true, approverRole: 'Content owner', requiredForContainment: false, approvedBy: 'Arjun Rao', approvedAt: '10:15 AM' }),
     ],
     notes: [
       note('note-3002-1', 'Arjun Rao', '10:14 AM', 'Primary goal is direct exposure validation and closure, not a full cross-system kill chain review.'),
@@ -288,6 +301,7 @@ function case3002Fixture(item: WorkItem): InvestigationFixture {
     handoffTeams: ['Compliance / legal'],
     timeSpan: '16 minutes',
     entityCount: 4,
+    huntResults: [],
   };
 }
 
@@ -326,7 +340,7 @@ function genericFixture(item: WorkItem): InvestigationFixture {
       entity(`${item.id}-ent-${index + 1}`, 'Related entity', entry, 'Medium', 'Investigation context', 1, 1, item.last_activity, entry, 'Baseline comparison pending.', [], [], playbook.recommendedChecks.slice(0, 2), playbook.likelyResponseActions.slice(0, 2)),
     ),
     actions: playbook.likelyResponseActions.slice(0, 4).map((entry, index) =>
-      response(`${item.id}-act-${index + 1}`, entry, actor, 'Recommended from the risk playbook.', 'Advances containment or validation.', 'Business impact depends on final scope.', 'Reversible', index === 0 ? 'Approver required' : 'None', index === 0 ? 'Recommended' : 'Pending approval', index % 2 === 0 ? 'AI' : 'Analyst', item.last_activity),
+      response(`${item.id}-act-${index + 1}`, entry, actor, 'Recommended from the risk playbook.', 'Advances containment or validation.', 'Business impact depends on final scope.', 'Reversible', index === 0 ? 'Approver required' : 'None', index === 0 ? 'Recommended' : 'Pending approval', index % 2 === 0 ? 'AI' : 'Analyst', item.last_activity, { requiresApproval: index === 0, requiredForContainment: index < 2 }),
     ),
     notes: [note(`${item.id}-note-1`, item.assignee, item.last_activity, 'Investigation context generated from the selected work item.')],
     activity: [activity(`${item.id}-hist-1`, item.last_activity, 'System', 'System', 'Investigation generated', `Investigation workspace opened for ${item.id}.`)],
@@ -337,6 +351,9 @@ function genericFixture(item: WorkItem): InvestigationFixture {
     handoffTeams: ['Incident-response team'],
     timeSpan: `${item.detection_time} to ${item.last_activity}`,
     entityCount: item.preview.actors_entities.length + item.preview.affected_systems_resources.length,
+    huntResults: [
+      hunt(`${item.id}-hunt-1`, 'Related activity', 'Related identity activity', 'Additional related telemetry surfaced from the same actor context.', item.detection_source, actor, item.last_activity),
+    ],
   };
 }
 
@@ -390,8 +407,24 @@ function timeline(
   entity: string,
   relevance: TimelineEvent['relevance'],
   details: string[],
+  occurredAt?: string,
+  evidenceId?: string,
 ): TimelineEvent {
-  return { id, timestamp, category, systemName, title, description, relatedAlert, entity, relevance, details };
+  return {
+    id,
+    timestamp,
+    occurredAt: occurredAt ?? synthesizeOccurredAt(timestamp),
+    category,
+    systemName,
+    title,
+    description,
+    relatedAlert,
+    entity,
+    relevance,
+    details,
+    evidenceId,
+    attached: true,
+  };
 }
 
 function evidence(
@@ -470,8 +503,37 @@ function response(
   currentState: InvestigationResponseAction['currentState'],
   createdBy: InvestigationResponseAction['createdBy'],
   auditTimestamp: string,
+  extras?: Partial<InvestigationResponseAction>,
 ): InvestigationResponseAction {
-  return { id, title, affectedEntity, reason, expectedEffect, businessImpact, reversibility, approvalRequirement, currentState, createdBy, auditTimestamp };
+  return {
+    id,
+    title,
+    affectedEntity,
+    reason,
+    expectedEffect,
+    businessImpact,
+    reversibility,
+    approvalRequirement,
+    currentState,
+    createdBy,
+    auditTimestamp,
+    requiresApproval: extras?.requiresApproval ?? !/none|n\/a/i.test(approvalRequirement),
+    approverRole: extras?.approverRole,
+    approver: extras?.approver,
+    approvalRequestedBy: extras?.approvalRequestedBy,
+    approvalRequestedAt: extras?.approvalRequestedAt,
+    approvedBy: extras?.approvedBy,
+    approvedAt: extras?.approvedAt,
+    rejectedBy: extras?.rejectedBy,
+    rejectedAt: extras?.rejectedAt,
+    failureReason: extras?.failureReason,
+    retryCount: extras?.retryCount ?? 0,
+    requiredForContainment: extras?.requiredForContainment ?? false,
+    containmentCategory: extras?.containmentCategory,
+    dependencies: extras?.dependencies ?? [],
+    history: extras?.history ?? [],
+    note: extras?.note,
+  };
 }
 
 function note(id: string, author: string, timestamp: string, text: string): InvestigationNote {
@@ -490,4 +552,39 @@ function activity(
   comment?: string,
 ): InvestigationActivityItem {
   return { id, timestamp, actor, actorType, activityType, description, previousValue, newValue, comment };
+}
+
+function hunt(
+  id: string,
+  type: string,
+  title: string,
+  description: string,
+  sourceSystem: string,
+  entity: string,
+  timestamp: string,
+) {
+  return {
+    id,
+    type,
+    title,
+    description,
+    sourceSystem,
+    entity,
+    timestamp,
+    attached: false,
+  };
+}
+
+function synthesizeOccurredAt(timestamp: string) {
+  const base = '2026-06-01';
+  const normalized = timestamp.replace(/\s/g, '');
+  const match = normalized.match(/^(\d{1,2}):(\d{2})(AM|PM)$/i);
+  if (!match) {
+    return `${base}T12:00:00.000Z`;
+  }
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  const meridiem = match[3].toUpperCase();
+  const hour24 = meridiem === 'PM' ? (hours % 12) + 12 : hours % 12;
+  return `${base}T${String(hour24).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00.000Z`;
 }

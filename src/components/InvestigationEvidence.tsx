@@ -4,18 +4,22 @@ import type { EvidenceItem, IncludedAlertItem } from '../types/investigation';
 interface InvestigationEvidenceProps {
   alerts: IncludedAlertItem[];
   evidence: EvidenceItem[];
+  onOpenAlert: (id: string) => void;
   onOpenEvidence: (id: string) => void;
   onUpdateAlertRelevance: (id: string, next: IncludedAlertItem['relevance']) => void;
   onUpdateEvidenceVerdict: (id: string, next: EvidenceItem['verdict']) => void;
+  onToggleEvidenceAttached: (id: string) => void;
   onAddNote: () => void;
 }
 
 export function InvestigationEvidence({
   alerts,
   evidence,
+  onOpenAlert,
   onOpenEvidence,
   onUpdateAlertRelevance,
   onUpdateEvidenceVerdict,
+  onToggleEvidenceAttached,
   onAddNote,
 }: InvestigationEvidenceProps) {
   return (
@@ -53,19 +57,26 @@ export function InvestigationEvidence({
                   <dd>{alert.status}</dd>
                 </div>
               </div>
-              <p>{alert.linkingRationale}</p>
+              <div className="cg-investigation-ai-insight">
+                <p>{alert.linkingRationale}</p>
+              </div>
               <div className="cg-investigation-action-row">
-                <Button kind="ghost" size="sm">
-                  Open alert details
-                </Button>
-                <Button kind="ghost" size="sm" onClick={() => onUpdateAlertRelevance(alert.id, 'Relevant')}>
-                  Mark relevant
-                </Button>
-                <Button kind="ghost" size="sm" onClick={() => onUpdateAlertRelevance(alert.id, 'Irrelevant')}>
-                  Mark unrelated
+                <Button
+                  kind="ghost"
+                  size="sm"
+                  onClick={() =>
+                    onUpdateAlertRelevance(
+                      alert.id,
+                      alert.relevance === 'Relevant' ? 'Irrelevant' : 'Relevant',
+                    )
+                  }>
+                  {alert.relevance === 'Relevant' ? 'Mark irrelevant' : 'Mark relevant'}
                 </Button>
                 <Button kind="ghost" size="sm" onClick={onAddNote}>
                   Add note
+                </Button>
+                <Button kind="ghost" size="sm" onClick={() => onOpenAlert(alert.id)}>
+                  Open alert details
                 </Button>
               </div>
             </article>
@@ -106,15 +117,27 @@ export function InvestigationEvidence({
           </Table>
         </div>
         <div className="cg-investigation-action-row">
-          <Button kind="ghost" size="sm" onClick={() => evidence[0] && onUpdateEvidenceVerdict(evidence[0].id, 'Relevant')}>
-            Mark relevant
-          </Button>
-          <Button kind="ghost" size="sm" onClick={() => evidence[0] && onUpdateEvidenceVerdict(evidence[0].id, 'Irrelevant')}>
-            Mark irrelevant
-          </Button>
           <Button kind="ghost" size="sm" onClick={onAddNote}>
             Add note
           </Button>
+          {evidence[0] ? (
+            <>
+              <Button
+                kind="ghost"
+                size="sm"
+                onClick={() =>
+                  onUpdateEvidenceVerdict(
+                    evidence[0].id,
+                    evidence[0].verdict === 'Relevant' ? 'Irrelevant' : 'Relevant',
+                  )
+                }>
+                {evidence[0].verdict === 'Relevant' ? 'Mark irrelevant' : 'Mark relevant'}
+              </Button>
+              <Button kind="ghost" size="sm" onClick={() => onToggleEvidenceAttached(evidence[0].id)}>
+                {evidence[0].attached ? 'Detach from case' : 'Attach to case'}
+              </Button>
+            </>
+          ) : null}
         </div>
       </section>
     </div>

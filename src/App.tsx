@@ -10,19 +10,25 @@ import {
 } from '@carbon/react';
 import specData from './data/cyberguard_work_queue_content_spec_v1.json';
 import { AppHeader } from './components/AppHeader';
+import { AlertsCaseOverview } from './components/AlertsCaseOverview';
 import { BulkActionBar } from './components/BulkActionBar';
+import { ClassifyItemModal } from './components/ClassifyItemModal';
 import { ColumnCustomizer } from './components/ColumnCustomizer';
+import { EscalateCaseModal } from './components/EscalateCaseModal';
 import { FilterPanel } from './components/FilterPanel';
 import { InvestigationWorkspaceModal } from './components/InvestigationWorkspaceModal';
 import { MergeReviewModal } from './components/MergeReviewModal';
+import { ModuleActivityLog } from './components/ModuleActivityLog';
 import { PreviewDrawer } from './components/PreviewDrawer';
 import { QueuePagination } from './components/QueuePagination';
 import { QueueToolbar } from './components/QueueToolbar';
+import { ResolveItemModal } from './components/ResolveItemModal';
 import { ShortcutGuideModal } from './components/ShortcutGuideModal';
 import { WorkQueueHeader } from './components/WorkQueueHeader';
 import { WorkQueueTable } from './components/WorkQueueTable';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
-import type { InvestigationTabId } from './types/investigation';
+import { useWorkflowState } from './hooks/useWorkflowState';
+import type { InvestigationTabId, WorkItemClassification, WorkflowActivityEvent } from './types/investigation';
 import type {
   ColumnDefinition,
   FilterDefinition,
@@ -95,7 +101,25 @@ function App() {
     }));
   }, [spec]);
 
-  const [items, setItems] = useState<WorkItem[]>(baseItems);
+  const {
+    items,
+    setItems,
+    updateItem,
+    workflowStateByItemId,
+    globalActivityLog,
+    getItemById,
+    getOrCreateWorkspace,
+    ensureWorkspaceState,
+    updateWorkspaceState,
+    assignItem,
+    changeWorkflowStatus,
+    overrideSeverity,
+    classifyItem,
+    resolveItem,
+    reopenItem,
+    addEscalation,
+    overviewMetrics,
+  } = useWorkflowState(baseItems, CURRENT_ANALYST);
   const [activeTab, setActiveTab] = useState<QueueTab>('Work Queue');
   const [segment, setSegment] = useState<QueueSegment>('All');
   const [queueSearch, setQueueSearch] = useState('');
@@ -126,6 +150,9 @@ function App() {
   const [drawerStatusOpen, setDrawerStatusOpen] = useState(false);
   const [severityModalOpen, setSeverityModalOpen] = useState(false);
   const [reopenModalOpen, setReopenModalOpen] = useState(false);
+  const [classifyModalOpen, setClassifyModalOpen] = useState(false);
+  const [resolveModalOpen, setResolveModalOpen] = useState(false);
+  const [escalateModalOpen, setEscalateModalOpen] = useState(false);
   const [pendingAssignee, setPendingAssignee] = useState(bulkAssignOptions[0]);
   const [pendingStatus, setPendingStatus] = useState<(typeof workflowStatusOptions)[number]>('Triaged');
   const [pendingTag, setPendingTag] = useState('Needs review');
@@ -133,6 +160,27 @@ function App() {
   const [severityComment, setSeverityComment] = useState('');
   const [reopenComment, setReopenComment] = useState('');
   const [reopenStatus, setReopenStatus] = useState<(typeof workflowStatusOptions)[number]>('Investigating');
+  const [pendingClassification, setPendingClassification] = useState<WorkItemClassification>('True positive — malicious activity');
+  const [classificationComment, setClassificationComment] = useState('');
+  const [duplicateCaseId, setDuplicateCaseId] = useState('');
+  const [exceptionOwner, setExceptionOwner] = useState('');
+  const [createTuningFeedback, setCreateTuningFeedback] = useState(false);
+  const [resolutionSummary, setResolutionSummary] = useState('');
+  const [rootCause, setRootCause] = useState('');
+  const [remediationSummary, setRemediationSummary] = useState('');
+  const [residualRisk, setResidualRisk] = useState('');
+  const [finalResolutionComment, setFinalResolutionComment] = useState('');
+  const [monitoringRequired, setMonitoringRequired] = useState(true);
+  const [resolutionRecipients, setResolutionRecipients] = useState<string[]>([]);
+  const [childAlertHandling, setChildAlertHandling] = useState<'resolve-all' | 'detach-selected'>('resolve-all');
+  const [detachedAlertIds, setDetachedAlertIds] = useState<string[]>([]);
+  const [exceptionReason, setExceptionReason] = useState('');
+  const [escalationTeam, setEscalationTeam] = useState('');
+  const [escalationUrgency, setEscalationUrgency] = useState('High');
+  const [escalationReason, setEscalationReason] = useState('');
+  const [escalationNote, setEscalationNote] = useState('');
+  const [escalationTaskOwner, setEscalationTaskOwner] = useState('');
+  const [notifyDataOwner, setNotifyDataOwner] = useState(false);
   const [mergeReopenComment, setMergeReopenComment] = useState('');
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const [destinationCaseId, setDestinationCaseId] = useState<string | null>(null);
@@ -202,11 +250,63 @@ function App() {
     items.find((item) => item.id === investigationItemId) ??
     previewItem ??
     null;
+  const investigationWorkspace = investigationItem ? getOrCreateWorkspace(investigationItem) : null;
   const selectedItems = items.filter((item) => selectedIds.includes(item.id));
   const selectedCases = selectedItems.filter((item) => item.item_type === 'case');
+  const classificationTargetItem = investigationItem ?? previewItem;
 
   const mergeSummary = useMemo(() => buildMergeSummary(selectedItems, items, destinationCaseId), [destinationCaseId, items, selectedItems]);
   const canConsolidateSelection = selectedItems.length >= 2;
+  const itemsByStatus = useMemo(
+    () =>
+      workflowStatusOptions.reduce<Record<string, number>>((acc, status) => {
+        acc[status] = items.filter((item) => item.status === status).length;
+        return acc;
+      }, {}),
+    [items],
+  );
+  const topRiskTypes = useMemo(
+    () =>
+      Object.entries(
+        items.reduce<Record<string, number>>((acc, item) => {
+          acc[item.risk_type] = (acc[item.risk_type] ?? 0) + 1;
+          return acc;
+        }, {}),
+      )
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5)
+        .map(([label, count]) => ({ label, count })),
+    [items],
+  );
+  const topSystems = useMemo(
+    () =>
+      Object.entries(
+        items.flatMap((item) => item.affected_systems).reduce<Record<string, number>>((acc, system) => {
+          acc[system] = (acc[system] ?? 0) + 1;
+          return acc;
+        }, {}),
+      )
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5)
+        .map(([label, count]) => ({ label, count })),
+    [items],
+  );
+  const moduleActivityEvents = useMemo(() => {
+    const workspaceEvents: WorkflowActivityEvent[] = items.flatMap((item) => {
+      const workspace = workflowStateByItemId[item.id]?.workspace;
+      if (!workspace) return [];
+      return workspace.activity.map((entry) => ({
+        ...entry,
+        itemId: item.id,
+        itemTitle: item.title,
+        itemType: item.item_type,
+        system: item.affected_systems[0],
+        riskType: item.risk_type,
+        result: entry.newValue ?? entry.comment ?? 'Recorded',
+      }));
+    });
+    return [...workspaceEvents, ...globalActivityLog].sort((a, b) => b.id.localeCompare(a.id));
+  }, [globalActivityLog, items, workflowStateByItemId]);
 
   useEffect(() => {
     const state = new URLSearchParams(window.location.search).get('state');
@@ -235,56 +335,87 @@ function App() {
       setShortcutGuideOpen(true);
     } else if (state === 'investigation') {
       const heroCase = items.find((item) => item.id === 'CASE-3001') ?? items.find((item) => item.item_type === 'case') ?? items[0];
+      if (heroCase) ensureWorkspaceState(heroCase);
       setPreviewItemId(heroCase?.id ?? null);
       setInvestigationItemId(heroCase?.id ?? null);
       setActiveInvestigationTab('summary');
       setInvestigationInfoOpen(true);
     } else if (state === 'investigation-timeline') {
       const heroCase = items.find((item) => item.id === 'CASE-3001') ?? items.find((item) => item.item_type === 'case') ?? items[0];
+      if (heroCase) ensureWorkspaceState(heroCase);
       setPreviewItemId(heroCase?.id ?? null);
       setInvestigationItemId(heroCase?.id ?? null);
       setActiveInvestigationTab('timeline');
       setInvestigationInfoOpen(true);
     } else if (state === 'investigation-evidence') {
       const heroCase = items.find((item) => item.id === 'CASE-3001') ?? items.find((item) => item.item_type === 'case') ?? items[0];
+      if (heroCase) ensureWorkspaceState(heroCase);
       setPreviewItemId(heroCase?.id ?? null);
       setInvestigationItemId(heroCase?.id ?? null);
       setActiveInvestigationTab('evidence');
       setInvestigationInfoOpen(true);
     } else if (state === 'investigation-entities') {
       const heroCase = items.find((item) => item.id === 'CASE-3001') ?? items.find((item) => item.item_type === 'case') ?? items[0];
+      if (heroCase) ensureWorkspaceState(heroCase);
       setPreviewItemId(heroCase?.id ?? null);
       setInvestigationItemId(heroCase?.id ?? null);
       setActiveInvestigationTab('entities');
       setInvestigationInfoOpen(true);
     } else if (state === 'investigation-actions') {
       const heroCase = items.find((item) => item.id === 'CASE-3001') ?? items.find((item) => item.item_type === 'case') ?? items[0];
+      if (heroCase) ensureWorkspaceState(heroCase);
       setPreviewItemId(heroCase?.id ?? null);
       setInvestigationItemId(heroCase?.id ?? null);
       setActiveInvestigationTab('actions');
       setInvestigationInfoOpen(true);
     } else if (state === 'investigation-activity') {
       const heroCase = items.find((item) => item.id === 'CASE-3001') ?? items.find((item) => item.item_type === 'case') ?? items[0];
+      if (heroCase) ensureWorkspaceState(heroCase);
       setPreviewItemId(heroCase?.id ?? null);
       setInvestigationItemId(heroCase?.id ?? null);
       setActiveInvestigationTab('activity');
       setInvestigationInfoOpen(true);
     } else if (state === 'investigation-cloud-exposure') {
       const cloudCase = items.find((item) => item.id === 'CASE-3002') ?? items.find((item) => item.item_type === 'case') ?? items[0];
+      if (cloudCase) ensureWorkspaceState(cloudCase);
       setPreviewItemId(cloudCase?.id ?? null);
       setInvestigationItemId(cloudCase?.id ?? null);
       setActiveInvestigationTab('summary');
       setInvestigationInfoOpen(true);
+    } else if (state === 'response-action' || state === 'pending-approval' || state === 'failed-action' || state === 'resolve-case' || state === 'resolve-exception' || state === 'handoff' || state === 'raw-evidence' || state === 'hunt-results') {
+      const heroCase = items.find((item) => item.id === 'CASE-3001') ?? items.find((item) => item.item_type === 'case') ?? items[0];
+      if (heroCase) ensureWorkspaceState(heroCase);
+      setActiveTab('Work Queue');
+      setPreviewItemId(heroCase?.id ?? null);
+      setInvestigationItemId(heroCase?.id ?? null);
+      setActiveInvestigationTab(
+        state === 'raw-evidence' ? 'evidence'
+          : state === 'response-action' || state === 'pending-approval' || state === 'failed-action'
+            ? 'actions'
+            : 'summary',
+      );
+      setInvestigationInfoOpen(true);
+      if (state === 'resolve-case') setResolveModalOpen(true);
+      if (state === 'resolve-exception') {
+        setResolveModalOpen(true);
+        setExceptionReason('Containment requires documented analyst exception.');
+      }
+      if (state === 'handoff') setEscalateModalOpen(true);
+    } else if (state === 'classification') {
+      const firstAlert = items.find((item) => item.item_type === 'alert') ?? items[0];
+      setActiveTab('Work Queue');
+      setPreviewItemId(firstAlert?.id ?? null);
+      setClassifyModalOpen(true);
+    } else if (state === 'module-activity-log') {
+      setActiveTab('Activity Log');
+    } else if (state === 'overview') {
+      setActiveTab('Overview');
     }
-  }, [items]);
+  }, [ensureWorkspaceState, items]);
 
   useEffect(() => {
     setPage(1);
   }, [queueSearch, selectedFilters, segment, sortOptionId]);
-
-  useEffect(() => {
-    setItems(baseItems);
-  }, [baseItems]);
 
   useEffect(() => {
     queueSearchRef.current = document.querySelector('#queue-search') as HTMLInputElement | null;
@@ -301,10 +432,6 @@ function App() {
     setToasts((current) => [...current, { id, kind, title, subtitle }]);
   };
 
-  const updateItem = (itemId: string, updater: (item: WorkItem) => WorkItem) => {
-    setItems((current) => current.map((item) => (item.id === itemId ? updater(item) : item)));
-  };
-
   const openDrawerAssign = () => {
     if (!previewItem) return;
     setPendingAssignee(previewItem.assignee === CURRENT_ANALYST ? CURRENT_ANALYST : previewItem.assignee);
@@ -317,9 +444,9 @@ function App() {
     setDrawerStatusOpen(true);
   };
 
-  const openSeverityOverride = () => {
-    if (!previewItem) return;
-    setPendingSeverity((previewItem.analystSeverityOverride?.severity ?? previewItem.severity) as (typeof severityOptions)[number]);
+  const openSeverityOverride = (targetItem: WorkItem | null = previewItem) => {
+    if (!targetItem) return;
+    setPendingSeverity((targetItem.analystSeverityOverride?.severity ?? targetItem.severity) as (typeof severityOptions)[number]);
     setSeverityComment('');
     setSeverityModalOpen(true);
   };
@@ -332,56 +459,19 @@ function App() {
 
   const handleAssignToMe = () => {
     if (!previewItem) return;
-    updateItem(previewItem.id, (item) => ({
-      ...item,
-      assignee: CURRENT_ANALYST,
-      preview: {
-        ...item.preview,
-        identity_and_urgency: {
-          ...item.preview.identity_and_urgency,
-          assignee: CURRENT_ANALYST,
-        },
-      },
-      localHistory: [...(item.localHistory ?? []), `Assigned to ${CURRENT_ANALYST}`],
-    }));
+    assignItem(previewItem.id, CURRENT_ANALYST);
     addToast('success', 'Assigned to you', `${previewItem.id} is now assigned to ${CURRENT_ANALYST}.`);
   };
 
   const handleApplyDrawerAssignment = () => {
     if (!previewItem) return;
-    updateItem(previewItem.id, (item) => ({
-      ...item,
-      assignee: pendingAssignee,
-      preview: {
-        ...item.preview,
-        identity_and_urgency: {
-          ...item.preview.identity_and_urgency,
-          assignee: pendingAssignee,
-        },
-      },
-      localHistory: [...(item.localHistory ?? []), `Reassigned to ${pendingAssignee}`],
-    }));
+    assignItem(previewItem.id, pendingAssignee);
     setDrawerAssignOpen(false);
     addToast('success', 'Assignment updated', `${previewItem.id} is now assigned to ${pendingAssignee}.`);
   };
 
   const applyStatusChange = (itemId: string, nextStatus: (typeof workflowStatusOptions)[number], comment?: string) => {
-    updateItem(itemId, (item) => ({
-      ...item,
-      status: nextStatus,
-      reopenComment: comment ?? item.reopenComment,
-      preview: {
-        ...item.preview,
-        identity_and_urgency: {
-          ...item.preview.identity_and_urgency,
-          status: nextStatus,
-        },
-      },
-      localHistory: [
-        ...(item.localHistory ?? []),
-        comment ? `${item.id} reopened as ${nextStatus}: ${comment}` : `Status changed to ${nextStatus}`,
-      ],
-    }));
+    changeWorkflowStatus(itemId, nextStatus, comment);
   };
 
   const handleApplyDrawerStatus = () => {
@@ -398,31 +488,14 @@ function App() {
 
   const handleConfirmReopen = () => {
     if (!previewItem || !reopenComment.trim()) return;
-    applyStatusChange(previewItem.id, reopenStatus, reopenComment.trim());
+    reopenItem(previewItem.id, reopenStatus, reopenComment.trim());
     setReopenModalOpen(false);
     addToast('success', `${previewItem.id} reopened`, `${previewItem.id} reopened as ${reopenStatus}.`);
   };
 
   const handleApplySeverityOverride = () => {
     if (!previewItem || !severityComment.trim()) return;
-    const previousSeverity = previewItem.analystSeverityOverride?.previousSeverity ?? previewItem.severity;
-    updateItem(previewItem.id, (item) => ({
-      ...item,
-      severity: pendingSeverity,
-      analystSeverityOverride: {
-        severity: pendingSeverity,
-        comment: severityComment.trim(),
-        previousSeverity,
-      },
-      preview: {
-        ...item.preview,
-        identity_and_urgency: {
-          ...item.preview.identity_and_urgency,
-          severity: pendingSeverity,
-        },
-      },
-      localHistory: [...(item.localHistory ?? []), `Severity overridden to ${pendingSeverity}: ${severityComment.trim()}`],
-    }));
+    overrideSeverity(previewItem.id, pendingSeverity, severityComment.trim());
     setSeverityModalOpen(false);
     addToast('success', 'Severity override applied', `${previewItem.id} severity changed to ${pendingSeverity}.`);
   };
@@ -432,6 +505,10 @@ function App() {
   };
 
   const openInvestigationWorkspace = (itemId: string, tab: InvestigationTabId = 'summary') => {
+    const target = getItemById(itemId);
+    if (target) {
+      ensureWorkspaceState(target);
+    }
     setPreviewItemId(itemId);
     setInvestigationItemId(itemId);
     setActiveInvestigationTab(tab);
@@ -464,45 +541,13 @@ function App() {
 
   const handleApplyAssignment = () => {
     const targetAssignee = pendingAssignee === 'Assign to me' ? CURRENT_ANALYST : pendingAssignee;
-    setItems((current) =>
-      current.map((item) =>
-        selectedIds.includes(item.id)
-          ? {
-              ...item,
-              assignee: targetAssignee,
-              preview: {
-                ...item.preview,
-                identity_and_urgency: {
-                  ...item.preview.identity_and_urgency,
-                  assignee: targetAssignee,
-                },
-              },
-            }
-          : item,
-      ),
-    );
+    selectedIds.forEach((id) => assignItem(id, targetAssignee));
     setAssignModalOpen(false);
     addToast('success', 'Assignment updated', `Assigned ${selectedIds.length} items to ${targetAssignee}.`);
   };
 
   const handleApplyStatus = () => {
-    setItems((current) =>
-      current.map((item) =>
-        selectedIds.includes(item.id)
-          ? {
-              ...item,
-              status: pendingStatus,
-              preview: {
-                ...item.preview,
-                identity_and_urgency: {
-                  ...item.preview.identity_and_urgency,
-                  status: pendingStatus,
-                },
-              },
-            }
-          : item,
-      ),
-    );
+    selectedIds.forEach((id) => changeWorkflowStatus(id, pendingStatus));
     setStatusModalOpen(false);
     addToast('success', 'Status updated', `Updated ${selectedIds.length} items to ${pendingStatus}.`);
   };
@@ -605,6 +650,147 @@ function App() {
     setMergeReopenComment('');
     setPreviewItemId(targetId);
     addToast('success', 'Case consolidation complete', `${mergeSummary.resultingAlertCount} alerts rolled into ${targetId}.`);
+  };
+
+  const openClassifyModal = (item: WorkItem | null) => {
+    if (!item) return;
+    setPendingClassification(item.classification ?? 'True positive — malicious activity');
+    setClassificationComment('');
+    setDuplicateCaseId('');
+    setExceptionOwner('');
+    setCreateTuningFeedback(false);
+    setClassifyModalOpen(true);
+  };
+
+  const openResolveModal = (item: WorkItem | null) => {
+    if (!item) return;
+    const workspace = getOrCreateWorkspace(item);
+    setPendingClassification(item.classification ?? workspace.classification ?? 'True positive — malicious activity');
+    setResolutionSummary(item.resolution?.resolutionSummary ?? '');
+    setRootCause(item.resolution?.rootCause ?? '');
+    setRemediationSummary(item.resolution?.remediationSummary ?? '');
+    setResidualRisk(item.resolution?.residualRisk ?? '');
+    setFinalResolutionComment('');
+    setMonitoringRequired(item.resolution?.monitoringRequired ?? true);
+    setResolutionRecipients(item.resolution?.notificationRecipients ?? []);
+    setChildAlertHandling('resolve-all');
+    setDetachedAlertIds([]);
+    setExceptionReason('');
+    setResolveModalOpen(true);
+  };
+
+  const openEscalateModal = () => {
+    setEscalationTeam('');
+    setEscalationUrgency('High');
+    setEscalationReason('');
+    setEscalationNote('');
+    setEscalationTaskOwner('');
+    setNotifyDataOwner(false);
+    setEscalateModalOpen(true);
+  };
+
+  const handleSubmitClassification = () => {
+    if (!classificationTargetItem || !classificationComment.trim()) return;
+    classifyItem(classificationTargetItem.id, pendingClassification, classificationComment.trim());
+    if (pendingClassification === 'False positive' && createTuningFeedback) {
+      addToast('info', 'Detection feedback recorded', 'A lightweight detection-tuning feedback record was created locally.');
+    }
+    setClassifyModalOpen(false);
+    addToast('success', 'Classification saved', `${classificationTargetItem.id} classified as ${pendingClassification}.`);
+  };
+
+  const resolutionWarnings = useMemo(() => {
+    if (!classificationTargetItem) return [];
+    const workspace = getOrCreateWorkspace(classificationTargetItem);
+    const warnings: string[] = [];
+    if ((workspace.actions ?? []).some((action) => action.requiredForContainment && action.currentState !== 'Completed')) {
+      warnings.push('Required containment actions remain incomplete.');
+    }
+    if (classificationTargetItem.containment !== 'Contained') {
+      warnings.push('Containment is not yet Contained.');
+    }
+    if ((workspace.actions ?? []).some((action) => action.currentState === 'Pending approval')) {
+      warnings.push('Pending approvals remain open.');
+    }
+    if ((workspace.evidence ?? []).some((entry) => entry.verdict === 'Needs review')) {
+      warnings.push('Some evidence still needs review.');
+    }
+    if (classificationTargetItem.item_type === 'case' && childAlertHandling === 'resolve-all' && (workspace.alerts ?? []).some((alert) => alert.relevance === 'Needs review')) {
+      warnings.push('Child alerts still require analyst review.');
+    }
+    return warnings;
+  }, [childAlertHandling, classificationTargetItem, getOrCreateWorkspace]);
+
+  const handleSubmitResolution = () => {
+    if (!classificationTargetItem) return;
+    const workspace = getOrCreateWorkspace(classificationTargetItem);
+    resolveItem(classificationTargetItem.id, {
+      classification: pendingClassification,
+      resolutionSummary: resolutionSummary.trim(),
+      rootCause: rootCause.trim(),
+      remediationSummary: remediationSummary.trim(),
+      residualRisk: residualRisk.trim(),
+      monitoringRequired,
+      notificationRecipients: resolutionRecipients,
+      resolvedBy: CURRENT_ANALYST,
+      resolvedAt: 'Just now',
+      resolvedWithException: resolutionWarnings.length > 0,
+      exceptionReason: resolutionWarnings.length > 0 ? exceptionReason.trim() : undefined,
+      childAlertHandling,
+      detachedAlertIds: childAlertHandling === 'detach-selected' ? detachedAlertIds : [],
+    }, finalResolutionComment.trim());
+    if (classificationTargetItem.item_type === 'case' && childAlertHandling === 'detach-selected' && detachedAlertIds.length > 0) {
+      updateWorkspaceState(classificationTargetItem, (current) => ({
+        ...current,
+        alerts: current.alerts.filter((alert) => !detachedAlertIds.includes(alert.id)),
+      }));
+      setItems((current) =>
+        current.map((entry) =>
+          detachedAlertIds.includes(entry.id)
+            ? {
+                ...entry,
+                item_type: 'alert',
+                status: 'Investigating',
+                alert_count: null,
+              }
+            : entry,
+        ),
+      );
+    }
+    if (workspace.actions.some((action) => action.currentState === 'Pending approval')) {
+      addToast('warning', 'Resolved with exception', `${classificationTargetItem.id} was resolved with an analyst exception.`);
+    } else {
+      addToast('success', 'Item resolved', `${classificationTargetItem.id} is now resolved.`);
+    }
+    setResolveModalOpen(false);
+  };
+
+  const handleSubmitEscalation = () => {
+    if (!classificationTargetItem) return;
+    addEscalation(classificationTargetItem.id, {
+      team: escalationTeam,
+      urgency: escalationUrgency,
+      reason: escalationReason,
+      note: escalationNote,
+      createdBy: CURRENT_ANALYST,
+      createdAt: 'Just now',
+    });
+    if (escalationTaskOwner) {
+      updateWorkspaceState(classificationTargetItem, (current) => ({
+        ...current,
+        tasks: [
+          {
+            id: `task-${Date.now()}`,
+            title: `Follow up with ${escalationTeam}`,
+            owner: escalationTaskOwner,
+            completed: false,
+          },
+          ...current.tasks,
+        ],
+      }));
+    }
+    setEscalateModalOpen(false);
+    addToast('success', 'Escalation created', `${classificationTargetItem.id} handed off to ${escalationTeam}.`);
   };
 
   useKeyboardShortcuts({
@@ -731,16 +917,37 @@ function App() {
       <AppHeader activeTab={activeTab} onTabChange={setActiveTab} />
       <main id="main-content" className="cg-main">
         {activeTab === 'Overview' ? (
-          <PlaceholderCard
-            title="Overview"
-            description="Overview will summarize operational activity after downstream workflows are finalized."
+          <AlertsCaseOverview
+            metrics={overviewMetrics}
+            itemsByStatus={itemsByStatus}
+            topRiskTypes={topRiskTypes}
+            topSystems={topSystems}
+            onOpenWorkQueuePreset={(preset) => {
+              setActiveTab('Work Queue');
+              if (preset === 'critical-open') {
+                setSelectedFilters((current) => ({ ...current, severity: ['Critical'] }));
+              } else if (preset === 'sla-breached') {
+                setSelectedFilters((current) => ({ ...current, sla: ['Breached'] }));
+              } else if (preset === 'unassigned-p1') {
+                setSelectedFilters((current) => ({ ...current, assignee: ['Unassigned'], priority: ['P1'] }));
+              } else if (preset === 'active-exposures') {
+                setSelectedFilters((current) => ({ ...current, containment: ['Active exposure', 'Not contained'] }));
+              } else if (preset === 'pending-approvals') {
+                setQueueSearch('approval');
+              } else if (preset === 'failed-actions') {
+                setQueueSearch('failed');
+              }
+            }}
           />
         ) : null}
 
         {activeTab === 'Activity Log' ? (
-          <PlaceholderCard
-            title="Activity Log"
-            description="Activity Log will provide an audit-grade record of analyst, AI, and system actions."
+          <ModuleActivityLog
+            events={moduleActivityEvents}
+            onOpenWorkItem={(itemId) => {
+              setActiveTab('Work Queue');
+              setPreviewItemId(itemId);
+            }}
           />
         ) : null}
 
@@ -866,14 +1073,10 @@ function App() {
                     notifyPlaceholderAction('Rename case', 'Case renaming will be added in the next phase.')
                   }
                   onReopenItem={() => openReopenModal('Investigating')}
-                  onViewActivityLog={() =>
-                    notifyPlaceholderAction('Activity log', 'Open the Activity Log tab for the lightweight audit placeholder.')
-                  }
-                  onClassifyItem={() =>
-                    notifyPlaceholderAction('Classification', 'Classification controls are intentionally deferred in this prototype.')
-                  }
+                  onViewActivityLog={() => setActiveTab('Activity Log')}
+                  onClassifyItem={() => openClassifyModal(previewItem)}
                   onReviewRelatedAlerts={() =>
-                    notifyPlaceholderAction('Related alerts', 'Review related alerts in the queue before consolidating them into a case.')
+                    openInvestigationWorkspace(previewItem.id, 'evidence')
                   }
                   onConsolidateHint={() =>
                     notifyPlaceholderAction('Consolidate into case', 'Select related queue items to consolidate them into a case.')
@@ -1032,12 +1235,91 @@ function App() {
         </div>
       </Modal>
 
-      {investigationInfoOpen && investigationItem ? (
+      <ClassifyItemModal
+        open={classifyModalOpen}
+        itemId={classificationTargetItem?.id ?? null}
+        classification={pendingClassification}
+        comment={classificationComment}
+        duplicateCaseId={duplicateCaseId}
+        exceptionOwner={exceptionOwner}
+        createTuningFeedback={createTuningFeedback}
+        onClassificationChange={setPendingClassification}
+        onCommentChange={setClassificationComment}
+        onDuplicateCaseIdChange={setDuplicateCaseId}
+        onExceptionOwnerChange={setExceptionOwner}
+        onCreateTuningFeedbackChange={setCreateTuningFeedback}
+        onClose={() => setClassifyModalOpen(false)}
+        onSubmit={handleSubmitClassification}
+      />
+
+      <ResolveItemModal
+        open={resolveModalOpen}
+        itemId={classificationTargetItem?.id ?? null}
+        itemType={classificationTargetItem?.item_type ?? 'case'}
+        classification={pendingClassification}
+        resolutionSummary={resolutionSummary}
+        rootCause={rootCause}
+        remediationSummary={remediationSummary}
+        residualRisk={residualRisk}
+        finalComment={finalResolutionComment}
+        monitoringRequired={monitoringRequired}
+        childAlertHandling={childAlertHandling}
+        detachedAlertIds={detachedAlertIds}
+        includedAlerts={classificationTargetItem ? getOrCreateWorkspace(classificationTargetItem).alerts : []}
+        recipients={['Data owner', 'Incident response', 'Compliance', 'Legal', 'Manager']}
+        selectedRecipients={resolutionRecipients}
+        warnings={resolutionWarnings}
+        exceptionReason={exceptionReason}
+        onClassificationChange={setPendingClassification}
+        onResolutionSummaryChange={setResolutionSummary}
+        onRootCauseChange={setRootCause}
+        onRemediationSummaryChange={setRemediationSummary}
+        onResidualRiskChange={setResidualRisk}
+        onFinalCommentChange={setFinalResolutionComment}
+        onMonitoringRequiredChange={setMonitoringRequired}
+        onChildAlertHandlingChange={setChildAlertHandling}
+        onToggleDetachedAlert={(alertId) =>
+          setDetachedAlertIds((current) =>
+            current.includes(alertId) ? current.filter((entry) => entry !== alertId) : [...current, alertId],
+          )
+        }
+        onToggleRecipient={(recipient) =>
+          setResolutionRecipients((current) =>
+            current.includes(recipient) ? current.filter((entry) => entry !== recipient) : [...current, recipient],
+          )
+        }
+        onExceptionReasonChange={setExceptionReason}
+        onClose={() => setResolveModalOpen(false)}
+        onSubmit={handleSubmitResolution}
+      />
+
+      <EscalateCaseModal
+        open={escalateModalOpen}
+        team={escalationTeam}
+        urgency={escalationUrgency}
+        reason={escalationReason}
+        note={escalationNote}
+        taskOwner={escalationTaskOwner}
+        notifyDataOwner={notifyDataOwner}
+        teams={['Incident response', 'Data platform owner', 'Data owner', 'Compliance', 'Legal', 'HR / insider-risk team', 'Cloud platform team', 'Endpoint response team']}
+        owners={['Priya Sharma', 'Arjun Rao', 'Sameer Khan', 'Kavya Nair', 'Unassigned']}
+        onTeamChange={setEscalationTeam}
+        onUrgencyChange={setEscalationUrgency}
+        onReasonChange={setEscalationReason}
+        onNoteChange={setEscalationNote}
+        onTaskOwnerChange={setEscalationTaskOwner}
+        onNotifyDataOwnerChange={setNotifyDataOwner}
+        onClose={() => setEscalateModalOpen(false)}
+        onSubmit={handleSubmitEscalation}
+      />
+
+      {investigationInfoOpen && investigationItem && investigationWorkspace ? (
         <InvestigationWorkspaceModal
           open={investigationInfoOpen}
           item={investigationItem}
           activeTab={activeInvestigationTab}
           currentAnalyst={CURRENT_ANALYST}
+          workspace={investigationWorkspace}
           onClose={() => setInvestigationInfoOpen(false)}
           onTabChange={setActiveInvestigationTab}
           onAssignToMe={() => {
@@ -1045,18 +1327,7 @@ function App() {
             if (!target) return;
             setPreviewItemId(target.id);
             setInvestigationItemId(target.id);
-            updateItem(target.id, (entry) => ({
-              ...entry,
-              assignee: CURRENT_ANALYST,
-              preview: {
-                ...entry.preview,
-                identity_and_urgency: {
-                  ...entry.preview.identity_and_urgency,
-                  assignee: CURRENT_ANALYST,
-                },
-              },
-              localHistory: [...(entry.localHistory ?? []), `Assigned to ${CURRENT_ANALYST}`],
-            }));
+            assignItem(target.id, CURRENT_ANALYST);
             addToast('success', 'Assigned to you', `${target.id} is now assigned to ${CURRENT_ANALYST}.`);
           }}
           onReassign={() => {
@@ -1071,9 +1342,13 @@ function App() {
           }}
           onChangeSeverity={() => {
             setPreviewItemId(investigationItem.id);
-            openSeverityOverride();
+            openSeverityOverride(investigationItem);
           }}
+          onOpenClassify={() => openClassifyModal(investigationItem)}
+          onOpenResolve={() => openResolveModal(investigationItem)}
+          onOpenEscalate={openEscalateModal}
           onToast={addToast}
+          onWorkspaceChange={(updater, options) => updateWorkspaceState(investigationItem, updater, options)}
         />
       ) : null}
 
