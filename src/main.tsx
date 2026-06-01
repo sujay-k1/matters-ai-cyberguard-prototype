@@ -1,5 +1,6 @@
 if (import.meta.env.DEV || (typeof window !== 'undefined' && window.location.hostname === 'localhost')) {
-  void import('code-to-figma');
+  const captureModuleId = 'code-to-figma';
+  void import(/* @vite-ignore */ captureModuleId).catch(() => undefined);
 }
 import React from 'react';
 import ReactDOM from 'react-dom/client';
